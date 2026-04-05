@@ -1,0 +1,1588 @@
+================================================================================
+           ███████╗██╗   ██╗███╗   ██╗ ██████╗██╗  ██╗██████╗  ██████╗ 
+           ██╔════╝╚██╗ ██╔╝████╗  ██║██╔════╝██║  ██║██╔══██╗██╔═══██╗
+           ███████╗ ╚████╔╝ ██╔██╗ ██║██║     ███████║██████╔╝██║   ██║
+           ╚════██║  ╚██╔╝  ██║╚██╗██║██║     ██╔══██║██╔══██╗██║   ██║
+           ███████║   ██║   ██║ ╚████║╚██████╗██║  ██║██║  ██║╚██████╔╝
+           ╚══════╝   ╚═╝   ╚═╝  ╚═══╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ 
+================================================================================
+         THE DEFINITIVE BLUEPRINT FOR THE WORLD'S BEST WATCH PARTY PLATFORM
+                  GCP $300 FREE CREDITS EDITION — Zero External Spend
+================================================================================
+
+  Document Type : Architecture & Product Blueprint (GCP-Optimized Revision)
+  Version       : 2.0
+  Purpose       : Build a watch party platform that beats Teleparty, Watch2Gether,
+                  Rave, and every other competitor — entirely within GCP's $300
+                  free credit, with zero additional spend until revenue appears.
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  💰 GCP $300 CREDIT BUDGET STRATEGY                                     │
+  │                                                                         │
+  │  Total Credit : $300 (never expires, usable across all GCP services)   │
+  │  Target Burn  : < $5/month during development                           │
+  │                 < $25/month for a live MVP with real users              │
+  │                 $300 buys 12+ months of runway at MVP scale            │
+  │                                                                         │
+  │  FREE TIERS THAT DON'T EVEN TOUCH YOUR CREDITS:                        │
+  │  • Vercel (frontend)    — Free forever for hobby projects               │
+  │  • Supabase             — Free tier: 500MB DB, 50k auth users           │
+  │  • Cloudflare           — Free CDN, DNS, DDoS, TURN relay              │
+  │  • Google STUN servers  — Always free                                   │
+  │  • Firebase Auth        — Free for up to 10k users/month               │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+
+  PART A — COMPETITIVE ANALYSIS & WINNING STRATEGY
+    A1. What Exists Today (and Why It's Not Good Enough)
+    A2. Your Competitive Edge — What Synchra Does Differently
+
+  PART B — PRODUCT VISION & FEATURE SET
+    B1. Core Feature Set (MVP)
+    B2. Power Features (V2)
+    B3. UI/UX Design Vision
+
+  PART C — SYSTEM ARCHITECTURE (GCP-NATIVE)
+    C1. High-Level Architecture
+    C2. Technology Stack — GCP Edition (with Cost Reasoning)
+    C3. Infrastructure Design on GCP
+    C4. GCP Service Map & Monthly Cost Estimates
+
+  PART D — CORE ALGORITHMS (Production-Grade)
+    D1. Server-Authoritative Playback State Machine
+    D2. Adaptive Sync Engine (< 80ms accuracy)
+    D3. Clock Synchronization (Enhanced PTP-Style)
+    D4. Adaptive Bitrate WebRTC
+    D5. Presence & Room State
+
+  PART E — BACKEND DESIGN
+    E1. API Design
+    E2. Real-Time Event Architecture
+    E3. Database Schema
+    E4. File Upload & Video Pipeline (GCS-Native)
+
+  PART F — FRONTEND DESIGN SYSTEM
+    F1. Design Language
+    F2. Component Architecture
+    F3. Performance Targets & Techniques
+    F4. Responsive & Mobile Strategy
+
+  PART G — PERFORMANCE ENGINEERING
+    G1. Sync Accuracy Benchmarks
+    G2. Network Resilience
+    G3. Scalability Design
+
+  PART H — IMPLEMENTATION ROADMAP (GCP-Phased)
+    H1. Phase 1 — Core (Weeks 1–4): Everything on free tiers
+    H2. Phase 2 — Polish (Weeks 5–8): First GCP credits spent
+    H3. Phase 3 — Scale (Weeks 9–12): Production-ready
+
+  APPENDIX I  — GCP Credit Spend Tracker
+  APPENDIX II — Free vs Paid Tier Thresholds (When to Upgrade)
+
+
+================================================================================
+PART A — COMPETITIVE ANALYSIS & WINNING STRATEGY
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A1. WHAT EXISTS TODAY — AND WHY IT IS NOT GOOD ENOUGH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Platform        Model       Sync Accuracy   Voice/Video   Max Users   Weakness
+  ─────────────── ─────────── ─────────────── ───────────── ─────────── ─────────────────────────────────────
+  Teleparty       Extension   ~500ms          Text only     1,000       No real AV chat. Extension = friction.
+  Watch2Gether    Web         ~800ms          Text only     50          Dated UI. Slow. Ad-heavy free tier.
+  Rave            Mobile app  ~400ms          Voice only    50          App install required. YouTube only.
+  WatchParty.me   Web         ~300ms          Voice/Video   20          No mobile. Spartan UI.
+  Scener          Extension   ~600ms          Voice/Video   10          Extension only. Very limited platforms.
+  TwoSeven        Extension   ~400ms          Video chat    10          Low user cap. Patreon paywall.
+  Kosmi           Web         ~500ms          Voice/Video   15          Bloated, slow, resource heavy.
+
+  CRITICAL GAPS ACROSS ALL PLATFORMS:
+  1. None achieves < 200ms sync accuracy reliably across all networks.
+  2. None has a beautiful, modern design language (all are functional-ugly).
+  3. None supports mobile-native WebRTC video chat properly.
+  4. None offers real-time reactions (emoji overlays on video).
+  5. None has offline/downloaded video sync (only streaming platforms).
+  6. None has queue management (collaborative playlist).
+  7. None handles the "host buffering" problem gracefully.
+  8. None provides sync quality diagnostics visible to users.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A2. YOUR COMPETITIVE EDGE — WHAT SYNCHRA DOES DIFFERENTLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  SYNCHRA = The platform that makes watching together feel like being together.
+
+  Five Pillars of Superiority:
+
+  1. PRECISION SYNC (< 80ms)
+     Server-authoritative state machine. Every client runs a local clock
+     synchronized via enhanced PTP-style protocol. Drift correction uses
+     playback-rate nudging for sub-500ms deviations (no jarring seeks).
+
+  2. ZERO-INSTALL, ANY PLATFORM
+     Pure web app (PWA). No extension, no download. Works on Chrome, Safari,
+     Firefox, Edge, iOS Safari, Android Chrome. Share a link — done.
+
+  3. CINEMATIC DESIGN
+     Dark-first, cinema-inspired UI. Glassmorphism panels, micro-animations,
+     typographic hierarchy borrowed from editorial design.
+
+  4. INTELLIGENT HOST BUFFERING
+     When the host buffers, the server pauses ALL clients simultaneously.
+     3-2-1 countdown syncs the group restart. No more "I'm buffering" chaos.
+
+  5. SOCIAL LAYER
+     Live emoji reactions float over video. Collaborative queue. Persistent
+     rooms with history. Invite via link, QR code, or username.
+
+
+================================================================================
+PART B — PRODUCT VISION & FEATURE SET
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+B1. CORE FEATURE SET (MVP — Ship in 4 Weeks, $0 spend)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  VIDEO SOURCES
+  ├── YouTube (via IFrame API)
+  ├── Local file upload (MP4, MKV, WebM — up to 2GB → GCS free tier)
+  └── Direct URL (MP4 link, Twitch VOD, etc.)
+
+  ROOMS
+  ├── Instant room creation (no sign-up required for guest join)
+  ├── Unique shareable link + QR code
+  ├── Host controls: play, pause, seek, skip
+  ├── Host transfer (host can pass control to any participant)
+  └── Max 50 participants (technical limit — can raise with SFU)
+
+  COMMUNICATION
+  ├── WebRTC video/audio chat (up to 12 faces visible, grid layout)
+  ├── Mute/camera-off per user
+  ├── Real-time text chat (sidebar)
+  └── Live emoji reactions (float over video)
+
+  SYNC ENGINE
+  ├── < 80ms sync accuracy target
+  ├── Server-authoritative playback state
+  ├── Intelligent host buffering handling
+  └── Per-user sync quality indicator (green/yellow/red dot)
+
+  AUTHENTICATION
+  ├── Anonymous guest (no account needed)
+  ├── Google Sign-In via Firebase Auth (free tier: 10k users/month)
+  └── Username + avatar customization
+
+  DESIGN
+  ├── Dark cinema theme (default)
+  ├── Light mode toggle
+  ├── Fully responsive (mobile + desktop)
+  └── PWA installable (add to home screen)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+B2. POWER FEATURES (V2 — Ship in Weeks 5–12, < $25/month GCP spend)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  COLLABORATIVE QUEUE
+    Anyone in the room can add videos to an ordered queue. Host approves
+    or auto-approves. Drag to reorder. "Playing next" preview strip.
+
+  WATCH HISTORY & ROOMS
+    Registered users get persistent rooms (synchra.app/room/my-movie-nights).
+    Room keeps history of what was watched, when, with whom.
+
+  SCREEN SHARE MODE
+    Host can share browser tab or full screen (any streaming platform).
+    Other participants see the screenshare as the "video" source.
+
+  POLLS & REACTIONS
+    Host can create a quick poll ("Rate this movie: ⭐⭐⭐⭐?").
+    Reaction rain: tap emoji → floats up over video for all viewers.
+
+  THEATRE MODE
+    One-click to hide video chat grid, maximizing video real estate.
+    Chat becomes a translucent overlay bottom-right.
+
+  NETWORK QUALITY DASHBOARD (FOR POWER USERS)
+    Expandable panel: RTT, packet loss, sync offset, heartbeat interval,
+    ICE candidate type. Helps diagnose lag.
+
+  SCHEDULED ROOMS
+    Create a room that opens at a specific time. Share calendar invite link.
+    Sends browser notification 5 minutes before start.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+B3. UI/UX DESIGN VISION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  DESIGN LANGUAGE: "Cinema Noir"
+  Inspired by: movie theater darkrooms, premium streaming platforms,
+               Apple TV app, and editorial magazine typography.
+
+  COLOR PALETTE:
+    --bg-void       : #0A0A0F   (near-black, blue undertone — like a dark theater)
+    --bg-surface    : #13131A   (card/panel background)
+    --bg-elevated   : #1C1C27   (hover states, modals)
+    --accent-primary: #E5B754   (warm amber — cinematic, premium)
+    --accent-glow   : #FF6B35   (coral — used sparingly for reactions, live indicator)
+    --text-primary  : #F0EDE8   (warm white — easier on eyes than pure white)
+    --text-secondary: #7A7A8C   (muted purple-grey)
+    --border-subtle : rgba(255,255,255,0.06)
+    --glass-bg      : rgba(19,19,26,0.8) with backdrop-filter: blur(20px)
+
+  TYPOGRAPHY:
+    Display / Logo  : "Cinzel" — elegant, roman, cinematic weight
+    Headings        : "DM Serif Display" — editorial, authoritative
+    Body / UI       : "DM Sans" — clean, legible, modern
+    Monospace       : "JetBrains Mono" — for timestamps, sync stats
+
+  KEY LAYOUT PRINCIPLES:
+    • Video fills 100% of viewport in watch mode — NO chrome, NO padding.
+    • All UI chrome overlays as glass panels that appear on hover/tap.
+    • The join/lobby screen: left = video preview/info, right = join form.
+    • Participant grid: cinematic pill-shaped video tiles (16:9).
+    • Chat: right-side drawer. Messages animate in from bottom-right.
+    • Emoji reactions: fly upward from bottom, fade at 70% height.
+
+  MICRO-INTERACTIONS:
+    • Play/pause: ripple animation from center of video.
+    • Seek bar: thumbnail preview on hover (YouTube-style).
+    • Participant join: card slides in from right with a subtle pop.
+    • Sync indicator dot: animated pulse when correcting, solid when stable.
+    • Host crown icon: rotates 10° on host change with bounce.
+
+  LANDING PAGE:
+    • Full-screen video background (muted looping clip of a cinema).
+    • Single action: "Start Watching" button — creates room instantly.
+    • Below the fold: three feature highlights with animated icons.
+    • Minimal navigation: just Logo + Sign In button.
+
+
+================================================================================
+PART C — SYSTEM ARCHITECTURE (GCP-NATIVE EDITION)
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C1. HIGH-LEVEL ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                   CLIENTS                                    │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │  Desktop    │  │  Mobile     │  │  Tablet     │  │  PWA        │        │
+│  │  Browser    │  │  Browser    │  │  Browser    │  │  (installed)│        │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
+│         │ WebRTC P2P Video/Audio (mesh, up to 12 peers)      │              │
+│         └──────────────────────────────────────────────────────              │
+│                             WebSocket (Socket.IO)                            │
+└─────────────────────────────────────┼────────────────────────────────────────┘
+                                      │
+                         ┌────────────▼─────────────┐
+                         │      CLOUDFLARE (FREE)    │
+                         │   CDN · DDoS · DNS · TLS  │
+                         └────────────┬──────────────┘
+                                      │
+              ┌───────────────────────▼────────────────────────┐
+              │             GCP APPLICATION LAYER               │
+              │                                                  │
+              │  ┌────────────────────┐  ┌──────────────────┐   │
+              │  │  Cloud Run         │  │  Cloud Run       │   │
+              │  │  (Signaling/Sync)  │  │  (REST API)      │   │
+              │  │  Node + Socket.IO  │  │  Fastify         │   │
+              │  │  min 1 instance    │  │  Stateless       │   │
+              │  └────────┬───────────┘  └────────┬─────────┘   │
+              │           │                        │             │
+              │  ┌────────▼────────────────────────▼───────────┐ │
+              │  │    Memorystore for Redis (GCP managed)       │ │
+              │  │  Room state, presence, sync events, queues  │ │
+              │  └──────────────────────────────────────────────┘ │
+              └────────────────────────────────────────────────────┘
+                                      │
+              ┌───────────────────────▼────────────────────────┐
+              │                GCP DATA LAYER                   │
+              │                                                  │
+              │  ┌──────────────────┐  ┌──────────────────────┐ │
+              │  │  Cloud SQL       │  │  Cloud Storage (GCS) │ │
+              │  │  PostgreSQL 16   │  │  Video files + HLS   │ │
+              │  │  (Users, Rooms,  │  │  Thumbnails, assets  │ │
+              │  │   History)       │  │  5 GB/month FREE     │ │
+              │  └──────────────────┘  └──────────────────────┘ │
+              └────────────────────────────────────────────────────┘
+                                      │
+              ┌───────────────────────▼────────────────────────┐
+              │           FREE / ZERO-COST SERVICES             │
+              │                                                  │
+              │  Vercel (Frontend CDN) · Firebase Auth          │
+              │  Supabase (DB free tier for dev) · Cloudflare   │
+              └────────────────────────────────────────────────────┘
+```
+
+Key Architectural Decision — GCP-First:
+  Every component that can run on GCP is on GCP to consolidate credits.
+  The original blueprint spread across Fly.io, Cloudflare R2, Supabase, Upstash,
+  and Vercel — that's fine for production but wastes the $300 GCP advantage.
+  This version funnels all compute and storage through GCP, using zero-cost
+  external services only for things GCP doesn't do well (CDN edge, frontend).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C2. TECHNOLOGY STACK — GCP EDITION (WITH COST REASONING)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  FRONTEND (ZERO COST — STAYS ON VERCEL/CLOUDFLARE)
+  ─────────────────────────────────────────────────────────────────────────────
+  React 18 + TypeScript
+    Why: Concurrent features prevent sync-critical updates from blocking UI.
+
+  Vite 5
+    Why: Sub-50ms HMR. Native ESM. Code splitting per route.
+
+  Zustand (with Immer middleware)
+    Why: Fine-grained selectors = minimal re-renders during rapid sync updates.
+
+  Socket.IO Client v4
+    Why: Automatic WebSocket → polling fallback. Built-in reconnection.
+
+  simple-peer (MVP) → LiveKit SDK (V2)
+    Why: simple-peer for P2P mesh. LiveKit for SFU scale (self-hosted on GCP).
+
+  Framer Motion + Tailwind CSS v4
+    Why: Production-grade animation + zero-runtime CSS.
+
+  Deployed on: Vercel (Free Hobby tier — unlimited bandwidth for static files)
+
+  ─────────────────────────────────────────────────────────────────────────────
+  BACKEND RUNTIME — CLOUD RUN (replaces Fly.io)
+  ─────────────────────────────────────────────────────────────────────────────
+  Node.js 22 LTS + TypeScript on Cloud Run
+
+  Why Cloud Run over Fly.io for this build:
+    • GCP credits cover Cloud Run — Fly.io credits do not.
+    • Cloud Run free tier: 2 million requests/month + 360,000 GB-seconds/month
+    • WebSocket support: Cloud Run supports WebSockets with min-instances=1
+      (prevents the cold start problem — set min-instances to 1 in production)
+    • Auto-scales to zero when no users = zero cost during dev and off-hours
+    • Built-in HTTPS/TLS — no Cloudflare needed for the backend endpoint
+    • Docker-native: same image runs locally and in production
+
+  CRITICAL: Cloud Run WebSocket config
+    • Set --session-affinity (route the same user to the same instance)
+    • Set --min-instances=1 for the signaling server (cold start = lost WS)
+    • Set --timeout=3600 (1 hour max WebSocket session)
+    • Use Socket.IO Redis adapter so state is shared if instances > 1
+
+  Fastify (replacing Express)
+    Why: 3x faster on JSON serialization. Schema validation via Ajv.
+
+  Socket.IO v4 + Redis Adapter
+    Why: Redis adapter allows horizontal Cloud Run scaling. Without it,
+    WebSocket state is instance-local and cross-instance rooms fail.
+
+  ─────────────────────────────────────────────────────────────────────────────
+  CACHE — MEMORYSTORE FOR REDIS (replaces Upstash)
+  ─────────────────────────────────────────────────────────────────────────────
+  Google Cloud Memorystore (Redis 7 compatible)
+
+  Why Memorystore over Upstash:
+    • Memorystore is covered by GCP credits — Upstash is not.
+    • Same Redis API — zero code changes.
+    • 1 GB Basic tier ≈ $0.049/GB-hour = ~$35/month. Within $300 budget.
+    • Alternative for dev/early MVP: use Redis on Cloud Run (same container
+      or a separate minimal Cloud Run instance) = free until traffic grows.
+
+  COST OPTIMIZATION — Dev Phase:
+    Use a self-hosted Redis container on Cloud Run (free) instead of
+    Memorystore during development. Migrate to Memorystore for production.
+    Self-hosted Redis Cloud Run config:
+      Image: redis:7-alpine
+      Memory: 512MB, CPU: 0.5
+      Min instances: 1
+      Cost: ~$5/month (from GCP credits)
+
+  ─────────────────────────────────────────────────────────────────────────────
+  DATABASE — CLOUD SQL (replaces Supabase/Neon)
+  ─────────────────────────────────────────────────────────────────────────────
+  Google Cloud SQL for PostgreSQL 16
+
+  Why Cloud SQL over Supabase:
+    • Cloud SQL is covered by GCP credits.
+    • Supabase free tier has 500MB limit and pauses after 1 week of inactivity.
+    • Cloud SQL db-f1-micro instance: ~$7/month (covered by credits).
+    • 10GB SSD storage: ~$1.70/month (covered by credits).
+    • Built-in automated backups, point-in-time recovery.
+
+  STRATEGY: Start with Supabase free tier for Week 1–2 (zero spend),
+  then migrate to Cloud SQL once the schema stabilizes. This saves credits
+  during the development and iteration phase.
+
+  Connection management:
+    • Cloud SQL Auth Proxy (sidecar in Cloud Run) — no public IP needed
+    • Connection pooling: Cloud SQL built-in + pg-pool in Node.js
+    • Max connections: 25 for db-f1-micro (sufficient for MVP)
+
+  ─────────────────────────────────────────────────────────────────────────────
+  STORAGE — GOOGLE CLOUD STORAGE (replaces Cloudflare R2)
+  ─────────────────────────────────────────────────────────────────────────────
+  GCS Standard Storage (us-central1)
+
+  Why GCS over Cloudflare R2:
+    • GCS is covered by GCP credits — R2 is not.
+    • GCS free tier: 5GB/month storage, 1GB/month egress to internet.
+    • Signed URLs for direct client uploads (same pattern as R2 presigned URLs).
+    • Cloud Storage CORS can be set via gsutil or Console.
+
+  Egress cost awareness:
+    • After 1GB/month free: $0.12/GB egress (video streaming is egress-heavy).
+    • MITIGATION: Set Cloudflare as a CDN proxy in front of GCS bucket.
+      Users fetch from Cloudflare edge (free), not from GCS directly.
+      GCS → Cloudflare origin pull: charged once. Cloudflare → Users: FREE.
+    • This effectively makes video streaming free for the first 1–6 months.
+
+  ─────────────────────────────────────────────────────────────────────────────
+  VIDEO TRANSCODING — CLOUD RUN JOBS (replaces external FFmpeg workers)
+  ─────────────────────────────────────────────────────────────────────────────
+  FFmpeg in a Cloud Run Job (not a long-running service)
+
+  Why Cloud Run Jobs:
+    • Triggered on-demand (when video upload completes).
+    • Billed only for execution time — zero idle cost.
+    • 2 vCPU + 4GB RAM Cloud Run Job: transcodes 1GB video in ~3–5 minutes.
+    • Cost: ~$0.003 per job = nearly free for MVP-scale uploads.
+
+  Alternative for even lower cost:
+    • Use a Pub/Sub message to trigger a Cloud Function (Gen 2) for
+      thumbnail extraction (< 1 second, very cheap).
+    • Reserve Cloud Run Jobs for full HLS transcoding.
+
+  ─────────────────────────────────────────────────────────────────────────────
+  AUTHENTICATION — FIREBASE AUTH (replaces Supabase Auth)
+  ─────────────────────────────────────────────────────────────────────────────
+  Firebase Authentication (part of GCP/Firebase ecosystem)
+
+  Why Firebase Auth:
+    • Free for up to 10,000 users/month (phone auth costs extra, avoid it).
+    • Google Sign-In + Anonymous auth: both free forever.
+    • JWT tokens issued by Firebase, verifiable in Cloud Run with
+      firebase-admin SDK (no extra infra).
+    • Same Google account = seamless for most users.
+    • Can be used alongside GCP IAM for service-to-service auth.
+
+  ─────────────────────────────────────────────────────────────────────────────
+  CDN & EDGE — CLOUDFLARE (ZERO COST, NOT ON GCP)
+  ─────────────────────────────────────────────────────────────────────────────
+  Cloudflare Free Plan
+
+  Why keep Cloudflare (not on GCP):
+    • Cloudflare CDN, DDoS protection, DNS, and TLS are FREE forever.
+    • GCP Cloud CDN costs $0.02/GB — Cloudflare serves same content FREE.
+    • Proxy GCS bucket behind Cloudflare: users never hit GCS directly.
+    • Cloudflare Turnstile: free bot-protection on room creation.
+    • GCP Load Balancer (needed for custom domain on Cloud Run): $18/month.
+      Alternative: point Cloudflare DNS directly to Cloud Run URL (free).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C3. INFRASTRUCTURE DESIGN ON GCP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  GCP Project Structure:
+    Project: synchra-prod
+    Region:  us-central1  (cheapest GCP region, well-connected globally)
+             asia-south1  (Mumbai — good for Indian users, your home region)
+
+  Cloud Run Services:
+    synchra-signaling   — WebSocket server (min 1 instance, session affinity)
+    synchra-api         — REST API (min 0 instances, scales to zero)
+    synchra-redis       — Self-hosted Redis (min 1, during dev phase)
+    synchra-transcode   — Cloud Run Job (triggered on upload completion)
+
+  Networking:
+    • VPC with private IP for Cloud SQL and Memorystore (no public exposure)
+    • Serverless VPC Access connector: Cloud Run → Cloud SQL/Redis on VPC
+    • Cloud Run services: public HTTPS endpoint (no Load Balancer needed)
+    • Custom domain: Cloudflare DNS → Cloud Run URL (CNAME mapping)
+
+  CI/CD Pipeline (using Cloud Build — free tier: 120 min/day):
+    • GitHub repo → Cloud Build trigger on push to main
+    • Build Docker image → push to Artifact Registry (free 0.5 GB)
+    • Deploy to Cloud Run (blue/green via traffic splitting)
+    • Run migrations against Cloud SQL before traffic cutover
+
+  Deployment diagram:
+  
+  GitHub Push
+    └→ Cloud Build (free 120 min/day)
+         ├→ Build & test (docker build + npm test)
+         ├→ Push image to Artifact Registry
+         └→ Cloud Run deploy (zero-downtime rolling update)
+
+  Secrets management:
+    • Google Secret Manager: first 6 secrets free, then $0.06/10k accesses
+    • Store: DB_PASSWORD, FIREBASE_SERVICE_ACCOUNT, TURN_CREDENTIALS, etc.
+    • Cloud Run accesses secrets via environment variable injection
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C4. GCP SERVICE MAP & MONTHLY COST ESTIMATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 1: DEVELOPMENT (Weeks 1–4)                                      │
+  │  Target: $0 from GCP credits                                           │
+  ├──────────────────────────┬────────────────────┬────────────────────────┤
+  │  Service                 │  Plan               │  Monthly Cost          │
+  ├──────────────────────────┼────────────────────┼────────────────────────┤
+  │  Cloud Run (signaling)   │  Free tier          │  $0 (< 2M reqs/mo)    │
+  │  Cloud Run (API)         │  Free tier          │  $0 (scales to zero)  │
+  │  Cloud Run (Redis self)  │  Always-on, small   │  ~$5 (from credits)   │
+  │  Cloud SQL               │  Supabase free tier │  $0 (dev only)        │
+  │  Cloud Storage (GCS)     │  5 GB free          │  $0 (< 5GB)           │
+  │  Firebase Auth           │  Free tier          │  $0 (< 10k users)    │
+  │  Vercel (frontend)       │  Free hobby         │  $0                   │
+  │  Cloudflare              │  Free plan          │  $0                   │
+  │  Cloud Build             │  120 min/day free   │  $0 (dev pace)        │
+  ├──────────────────────────┼────────────────────┼────────────────────────┤
+  │  TOTAL PHASE 1           │                    │  ~$5/month             │
+  └──────────────────────────┴────────────────────┴────────────────────────┘
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 2: MVP LIVE (Weeks 5–8, first real users)                       │
+  │  Target: < $25/month from GCP credits                                  │
+  ├──────────────────────────┬────────────────────┬────────────────────────┤
+  │  Service                 │  Plan               │  Monthly Cost          │
+  ├──────────────────────────┼────────────────────┼────────────────────────┤
+  │  Cloud Run (signaling)   │  min-instances=1    │  ~$8 (credits)        │
+  │  Cloud Run (API)         │  Scale to zero      │  ~$2 (credits)        │
+  │  Cloud SQL (db-f1-micro) │  Migrate from Supa  │  ~$9 (credits)        │
+  │  Cloud SQL storage 10GB  │  SSD                │  ~$2 (credits)        │
+  │  Cloud Run Redis         │  512MB always-on    │  ~$5 (credits)        │
+  │  Cloud Storage (GCS)     │  ~20 GB videos      │  ~$0.50 (credits)     │
+  │  GCS egress              │  Cloudflare proxy   │  ~$0 (Cloudflare CDN) │
+  │  Cloud Build             │  CI/CD              │  ~$0 (free tier)      │
+  │  Secret Manager          │  < 6 secrets        │  ~$0                  │
+  │  Firebase Auth           │  Free tier          │  $0                   │
+  │  Vercel + Cloudflare     │  Free plans         │  $0                   │
+  ├──────────────────────────┼────────────────────┼────────────────────────┤
+  │  TOTAL PHASE 2           │                    │  ~$27/month            │
+  └──────────────────────────┴────────────────────┴────────────────────────┘
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  PHASE 3: SCALED (Weeks 9–12, growing user base)                       │
+  │  Target: < $60/month (still within $300 budget for 5 months)           │
+  ├──────────────────────────┬────────────────────┬────────────────────────┤
+  │  Service                 │  Plan               │  Monthly Cost          │
+  ├──────────────────────────┼────────────────────┼────────────────────────┤
+  │  Cloud Run (signaling)   │  min-1, 2 vCPU      │  ~$15 (credits)       │
+  │  Cloud Run (API)         │  Scale 0→5          │  ~$5 (credits)        │
+  │  Cloud SQL (db-g1-small) │  Upgraded           │  ~$25 (credits)       │
+  │  Memorystore Redis 1GB   │  Replaces self-host │  ~$35 (credits)       │
+  │  Cloud Storage           │  ~100 GB            │  ~$2 (credits)        │
+  │  Cloud Run Jobs (FFmpeg) │  On-demand transcode│  ~$1 (credits)        │
+  │  Cloud Monitoring        │  Free tier          │  $0                   │
+  ├──────────────────────────┼────────────────────┼────────────────────────┤
+  │  TOTAL PHASE 3           │                    │  ~$83/month            │
+  └──────────────────────────┴────────────────────┴────────────────────────┘
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  $300 CREDIT RUNWAY SUMMARY                                            │
+  ├──────────────────────────────────────────────────────────────────────────┤
+  │  Phase 1 (4 weeks)  :   4 × $5  =  $20                                │
+  │  Phase 2 (4 weeks)  :   4 × $27 =  $108 (projected based on usage)    │
+  │  Phase 3 (4 weeks)  :   4 × $83 =  $332 → EXCEEDS at week 12          │
+  │                                                                        │
+  │  REALISTIC OUTCOME: $300 covers the entire 12-week build + 2–3 months │
+  │  of live MVP operation at moderate traffic. By that point the product  │
+  │  should have early adopters or be ready to raise/monetize.             │
+  └────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+PART D — CORE ALGORITHMS (PRODUCTION-GRADE)
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+D1. SERVER-AUTHORITATIVE PLAYBACK STATE MACHINE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[UNCHANGED — This algorithm is infrastructure-agnostic. All code below
+ works identically whether deployed on Cloud Run, Fly.io, or bare metal.]
+
+CONCEPT: Treat video playback as a STATE MACHINE, not a timestamp broadcast.
+
+Server stores the authoritative PlaybackState:
+```
+interface PlaybackState {
+  baseVideoTime:   number       // seconds into video at reference point
+  baseServerTime:  number       // server epoch ms when baseVideoTime was set
+  isPlaying:       boolean
+  rate:            number       // 1.0 normal, supports 0.5–2.0
+  videoId:         string
+  videoType:       'youtube' | 'upload' | 'url'
+  isBuffering:     boolean
+  bufferingSince:  number | null
+}
+```
+
+getCurrentPosition() — computes the EXACT current video position at any time:
+```
+function getCurrentPosition(state: PlaybackState): number {
+  if (!state.isPlaying || state.isBuffering) {
+    return state.baseVideoTime
+  }
+  const serverNow  = Date.now()
+  const elapsedMs  = serverNow - state.baseServerTime
+  const elapsedSec = (elapsedMs / 1000) * state.rate
+  return state.baseVideoTime + elapsedSec
+}
+```
+
+State Transitions (only the HOST can trigger these):
+  PLAY event   → isPlaying=true,  baseVideoTime=current, baseServerTime=now
+  PAUSE event  → isPlaying=false, baseVideoTime=current
+  SEEK event   → baseVideoTime=seekTarget, baseServerTime=now (keep isPlaying)
+  BUFFER_START → isBuffering=true,  isPlaying=false, bufferingSince=now
+  BUFFER_END   → isBuffering=false, TRIGGERS COUNTDOWN → RESTART
+
+Server broadcasts state to ALL clients on every transition.
+Clients compute expected position using getCurrentPosition() locally.
+Near-zero bandwidth during steady-state (event-driven, not heartbeat polling).
+
+HOST BUFFERING SOLUTION (unique to Synchra):
+```
+// Server-side, watching host's socket
+socket.on('host:bufferStart', () => {
+  room.state.isBuffering = true
+  room.state.isPlaying = false
+  room.state.baseVideoTime = room.state.getCurrentPosition()
+  io.to(roomId).emit('playback:pause', room.state)
+  io.to(roomId).emit('room:notice', 'Host is buffering...')
+})
+
+socket.on('host:bufferEnd', async () => {
+  for (const count of [3, 2, 1]) {
+    io.to(roomId).emit('room:countdown', count)
+    await sleep(1000)
+  }
+  room.state.isBuffering = false
+  room.state.isPlaying = true
+  room.state.baseServerTime = Date.now()
+  io.to(roomId).emit('playback:play', room.state)
+})
+```
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+D2. ADAPTIVE SYNC ENGINE (Target: < 80ms accuracy)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The sync engine runs every 500ms on non-host clients.
+
+Drift Correction Strategy (3-tier):
+
+  TIER 1 — Negligible Drift (|drift| < 80ms)
+    Action: None. Imperceptible.
+
+  TIER 2 — Minor Drift (80ms ≤ |drift| < 500ms)
+    Action: Playback rate nudge.
+      drift > 0 (behind) → rate = 1.04
+      drift < 0 (ahead)  → rate = 0.97
+    Ramp back: once |drift| < 30ms, reset rate to 1.0.
+    ±4% rate change is inaudible. Converges in ~10s without seek.
+
+  TIER 3 — Significant Drift (500ms ≤ |drift| < 30s)
+    Action: Hard seek to expectedPosition.
+    Guard: Only seek if |lastSeekTime - now| > 1000ms (debounce).
+
+  TIER 4 — Extreme Drift (|drift| ≥ 30s)
+    Action: Ignore. Client is recovering from long disconnect.
+
+Implementation:
+```
+class SyncEngine {
+  private clockOffset = 0
+  private lastSeekAt = 0
+  private syncInterval: Timer
+
+  start() {
+    this.syncInterval = setInterval(() => this.tick(), 500)
+  }
+
+  tick() {
+    const state = this.getPlaybackState()
+    if (!state || !this.player) return
+    if (this.player.isBuffering()) return
+
+    const expectedPos = this.computeExpected(state)
+    const actualPos   = this.player.getCurrentTime()
+    const drift       = expectedPos - actualPos
+
+    if (Math.abs(drift) < 0.08) {
+      this.resetRate()
+    } else if (Math.abs(drift) < 0.5) {
+      this.player.setRate(drift > 0 ? 1.04 : 0.97)
+    } else if (Math.abs(drift) < 30) {
+      const now = performance.now()
+      if (now - this.lastSeekAt > 1000) {
+        this.player.seek(expectedPos)
+        this.resetRate()
+        this.lastSeekAt = now
+      }
+    }
+  }
+
+  computeExpected(state: PlaybackState): number {
+    if (!state.isPlaying || state.isBuffering) return state.baseVideoTime
+    const serverNow = Date.now() + this.clockOffset
+    const elapsedSec = ((serverNow - state.baseServerTime) / 1000) * state.rate
+    return state.baseVideoTime + elapsedSec
+  }
+
+  private resetRate() {
+    if (this.player.getRate() !== 1.0) this.player.setRate(1.0)
+  }
+}
+```
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+D3. CLOCK SYNCHRONIZATION (Enhanced PTP-Style)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Goal: Determine clockOffset = (server clock) - (local clock).
+
+NOTE ON CLOUD RUN: Cloud Run instances run on Google's infrastructure with
+hardware clocks synchronized via Google's internal Spanner TrueTime. The
+server-side Date.now() is extremely accurate. This actually improves our
+PTP-style sync because the reference time is already GPS-grade accurate.
+
+```
+class ClockSync {
+  private clockOffset: number | null = null
+  private readonly SAMPLE_COUNT = 15
+  private readonly SAMPLE_INTERVAL_MS = 100
+  private readonly EMA_ALPHA = 0.1
+
+  async sync(socket: Socket): Promise<void> {
+    const samples: Array<{ rtt: number; offset: number }> = []
+
+    for (let i = 0; i < this.SAMPLE_COUNT; i++) {
+      const t1 = performance.now()
+      const serverTime: number = await socket.emitWithAck('clock:ping', { t1 })
+      const t3 = performance.now()
+
+      const rtt    = t3 - t1
+      const offset = serverTime - (t1 + rtt / 2)
+      samples.push({ rtt, offset })
+
+      await sleep(this.SAMPLE_INTERVAL_MS)
+    }
+
+    // Reject outliers above 1.5× median RTT
+    const sortedRTT  = [...samples].sort((a, b) => a.rtt - b.rtt)
+    const medianRTT  = sortedRTT[Math.floor(sortedRTT.length / 2)].rtt
+    const good       = samples.filter(s => s.rtt <= medianRTT * 1.5)
+
+    const sortedOff  = [...good].sort((a, b) => a.offset - b.offset)
+    const newOffset  = sortedOff[Math.floor(sortedOff.length / 2)].offset
+
+    // Exponential Moving Average — smooth update
+    if (this.clockOffset === null) {
+      this.clockOffset = newOffset
+    } else {
+      this.clockOffset = this.EMA_ALPHA * newOffset +
+                         (1 - this.EMA_ALPHA) * this.clockOffset
+    }
+  }
+
+  getServerTime(): number {
+    return Date.now() + (this.clockOffset ?? 0)
+  }
+}
+```
+
+Server handler:
+```
+socket.on('clock:ping', (data, ack) => {
+  ack(Date.now())  // Cloud Run TrueTime — sub-ms accurate
+})
+```
+
+Re-sync triggers:
+  - On initial connect
+  - On socket reconnect  
+  - document.addEventListener('visibilitychange') — tab re-focus
+  - Every 60 seconds (maintenance sync)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+D4. ADAPTIVE BITRATE WEBRTC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[UNCHANGED from original — WebRTC is peer-to-peer and completely
+ independent of server infrastructure choices.]
+
+Media Constraints (getUserMedia):
+```
+{
+  video: {
+    width:     { ideal: 1280, max: 1920 },
+    height:    { ideal: 720,  max: 1080 },
+    frameRate: { ideal: 30, min: 15, max: 30 },
+    facingMode: 'user'
+  },
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    sampleRate: 48000,
+    channelCount: 2
+  }
+}
+```
+
+Dynamic Bitrate Tiers (adjusted every 5s based on RTCStatsReport):
+```
+function getTargetBitrate(packetLoss: number, rtt: number): number {
+  if (packetLoss > 5 || rtt > 300) return 500_000    // 500 kbps — degraded
+  if (packetLoss > 2 || rtt > 150) return 1_200_000  // 1.2 Mbps — normal
+  return 2_500_000                                    // 2.5 Mbps — good
+}
+```
+
+ICE Configuration (uses Google STUN — always free):
+```
+{
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    // TURN server: use Cloudflare TURN (free) or coturn on Cloud Run (~$3/mo)
+    {
+      urls: ['turn:YOUR_TURN_SERVER:3478', 'turns:YOUR_TURN_SERVER:443'],
+      username: process.env.TURN_USERNAME,
+      credential: process.env.TURN_PASSWORD
+    }
+  ],
+  iceCandidatePoolSize: 10,
+  bundlePolicy: 'max-bundle',
+  rtcpMuxPolicy: 'require'
+}
+```
+
+TURN SERVER OPTIONS (in order of cost):
+  1. Cloudflare TURN relay (Beta, free tier available)          → $0/month
+  2. Self-host coturn on Cloud Run (100MB image, 0.25 vCPU)   → ~$3/month
+  3. Metered.ca TURN (500GB free/month, then $0.40/GB)         → $0 for MVP
+  4. Twilio TURN                                                → $0.40/GB
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+D5. PRESENCE & ROOM STATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Presence stored in Redis (Memorystore or self-hosted) with TTL:
+```
+// On join
+await redis.setex(`presence:${roomId}:${userId}`, 30, JSON.stringify({
+  userId, displayName, avatarUrl, isHost, isMuted, isCameraOff, joinedAt
+}))
+
+// Heartbeat (every 15s from client)
+await redis.expire(`presence:${roomId}:${userId}`, 30)
+
+// On departure
+await redis.del(`presence:${roomId}:${userId}`)
+io.to(roomId).emit('room:participantLeft', { userId })
+```
+
+Room state (Redis, persistent across Cloud Run restarts):
+```
+interface RoomState {
+  roomId:       string
+  hostId:       string
+  playback:     PlaybackState
+  queue:        QueueItem[]
+  createdAt:    number
+  lastActivity: number
+}
+// Key: room:{roomId}  TTL: 24h from lastActivity
+```
+
+GCP-SPECIFIC: Cloud Run restarts are graceful (old instance stays up until
+new one is healthy). But if Redis (self-hosted Cloud Run) also restarts,
+room state is lost. Mitigation: use --min-instances=1 for Redis container
+AND periodically snapshot room state to Cloud SQL (every 5 minutes).
+
+
+================================================================================
+PART E — BACKEND DESIGN
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+E1. REST API DESIGN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  POST   /rooms               Create room → returns { roomId, inviteUrl }
+  GET    /rooms/:id           Get room metadata (for link preview / OG tags)
+  DELETE /rooms/:id           Delete room (host only)
+
+  POST   /rooms/:id/upload    Upload video → returns { uploadUrl, videoId }
+                              (uploadUrl is a GCS signed URL — direct upload)
+  GET    /rooms/:id/queue     Get current queue
+  POST   /rooms/:id/queue     Add item to queue
+
+  GET    /users/me            Get current user profile
+  PATCH  /users/me            Update display name, avatar
+
+  POST   /auth/anonymous      Create anonymous Firebase session
+  POST   /auth/google         Exchange Google ID token for session
+
+  All responses: JSON, snake_case keys, ISO 8601 timestamps.
+  Authentication: Firebase ID token in Authorization: Bearer header.
+    Verified via firebase-admin SDK in Cloud Run (no extra infra).
+  Rate limits: Cloud Armor (GCP WAF) or simple in-memory rate limiting
+    via ioredis sliding window (uses existing Redis — no extra cost).
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+E2. REAL-TIME EVENT ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Namespace: /room  (all room-specific events)
+
+  CLIENT → SERVER (host only unless noted)
+  ─────────────────────────────────────────────────────
+  room:join              { roomId, token }              → any client
+  room:leave             { roomId }                     → any client
+  playback:play          { videoTime }
+  playback:pause         { videoTime }
+  playback:seek          { videoTime }
+  playback:bufferStart   {}                             → host only
+  playback:bufferEnd     {}                             → host only
+  playback:rateChange    { rate }
+  queue:add              { videoId, videoType, title }  → any participant
+  queue:next             {}                             → host
+  queue:reorder          { fromIndex, toIndex }         → host
+  chat:message           { text }                       → any
+  reaction:send          { emoji }                      → any
+  webrtc:offer           { targetUserId, sdp }          → any
+  webrtc:answer          { targetUserId, sdp }          → any
+  webrtc:ice             { targetUserId, candidate }    → any
+  clock:ping             { t1 }                         → any
+
+  SERVER → CLIENT
+  ─────────────────────────────────────────────────────
+  room:state             { participants, playback, queue }   (on join)
+  room:participantJoined { participant }
+  room:participantLeft   { userId }
+  room:hostChanged       { newHostId }
+  room:countdown         { count: 3 | 2 | 1 }
+  room:notice            { message }
+  playback:state         { PlaybackState }
+  queue:updated          { queue }
+  chat:message           { userId, text, timestamp }
+  reaction:broadcast     { userId, emoji, timestamp }
+  webrtc:offer/answer/ice (forwarded)
+  clock:pong             { serverTime }
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+E3. DATABASE SCHEMA (Cloud SQL PostgreSQL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```sql
+-- Users (extended from Firebase Auth)
+CREATE TABLE users (
+  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  firebase_uid TEXT UNIQUE NOT NULL,  -- Firebase Auth UID (replaces Supabase auth_id)
+  display_name TEXT NOT NULL,
+  avatar_url   TEXT,
+  is_anonymous BOOLEAN DEFAULT FALSE,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Rooms (persistent metadata)
+CREATE TABLE rooms (
+  id           TEXT PRIMARY KEY,   -- short nanoid, e.g. "x7k2m"
+  name         TEXT,
+  host_id      UUID REFERENCES users(id),
+  is_private   BOOLEAN DEFAULT FALSE,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  last_active  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Watch History
+CREATE TABLE watch_sessions (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  room_id           TEXT REFERENCES rooms(id),
+  video_id          TEXT NOT NULL,
+  video_type        TEXT NOT NULL,   -- 'youtube' | 'upload' | 'url'
+  video_title       TEXT,
+  started_at        TIMESTAMPTZ,
+  ended_at          TIMESTAMPTZ,
+  participant_count INT
+);
+
+-- Room Members
+CREATE TABLE room_members (
+  room_id      TEXT REFERENCES rooms(id),
+  user_id      UUID REFERENCES users(id),
+  role         TEXT DEFAULT 'member',  -- 'host' | 'member' | 'moderator'
+  joined_at    TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (room_id, user_id)
+);
+
+-- Indexes
+CREATE INDEX idx_rooms_host      ON rooms(host_id);
+CREATE INDEX idx_sessions_room   ON watch_sessions(room_id);
+CREATE INDEX idx_members_user    ON room_members(user_id);
+CREATE INDEX idx_users_firebase  ON users(firebase_uid);
+```
+
+Cloud SQL Connection via Auth Proxy:
+```yaml
+# cloudbuild.yaml / Cloud Run service YAML snippet
+containers:
+  - image: gcr.io/PROJECT/synchra-api
+    env:
+      - name: DB_HOST
+        value: "127.0.0.1"  # Auth Proxy sidecar
+      - name: DB_PORT
+        value: "5432"
+  - image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest
+    args:
+      - "--port=5432"
+      - "PROJECT:REGION:synchra-db"
+```
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+E4. FILE UPLOAD & VIDEO PIPELINE (GCS-NATIVE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Upload Flow (using GCS Signed URLs — identical pattern to Cloudflare R2):
+
+  1. Client requests signed GCS upload URL from server
+     POST /rooms/:id/upload → returns { uploadUrl, videoId }
+
+  2. Client uploads directly to GCS (bypasses server — no memory pressure)
+     PUT {uploadUrl} with raw file bytes
+     (GCS signed URL valid for 15 minutes)
+
+  3. Client notifies server of completion
+     POST /rooms/:id/upload/complete { videoId }
+
+  4. Server publishes Pub/Sub message to 'video-transcode' topic
+     Cloud Run Job pulls the message, runs FFmpeg:
+       - Generate HLS segments (360p, 720p, 1080p)
+       - Extract thumbnail at 10% mark
+       - Write output to gs://synchra-videos/{videoId}/
+
+  5. Cloud Run Job completes → updates Cloud SQL record
+     Notifies signaling server via Redis Pub/Sub
+     queue:updated event broadcast to room
+
+GCS Bucket Configuration:
+```bash
+# Create bucket in same region as Cloud Run for free internal traffic
+gsutil mb -l us-central1 gs://synchra-videos
+
+# Set CORS for direct browser uploads
+gsutil cors set cors.json gs://synchra-videos
+
+# Serve via Cloudflare (proxy bucket as CDN origin — zero egress from GCS)
+# In Cloudflare: add CNAME videos.synchra.app → storage.googleapis.com
+# In GCS: enable "website configuration" with index/error pages
+```
+
+cors.json:
+```json
+[{
+  "origin": ["https://synchra.app", "http://localhost:5173"],
+  "method": ["PUT", "GET"],
+  "responseHeader": ["Content-Type", "Content-Length"],
+  "maxAgeSeconds": 3600
+}]
+```
+
+Node.js signed URL generation:
+```typescript
+import { Storage } from '@google-cloud/storage'
+
+const storage = new Storage()
+const bucket  = storage.bucket('synchra-videos')
+
+async function getUploadUrl(videoId: string): Promise<string> {
+  const [url] = await bucket.file(`uploads/${videoId}/original`).getSignedUrl({
+    version: 'v4',
+    action:  'write',
+    expires: Date.now() + 15 * 60 * 1000,
+    contentType: 'video/mp4',
+  })
+  return url
+}
+```
+
+Video Transcoding (Cloud Run Job with FFmpeg):
+```dockerfile
+# Dockerfile.transcode
+FROM jrottenberg/ffmpeg:6.1-alpine
+RUN apk add --no-cache nodejs npm
+WORKDIR /app
+COPY transcode.js .
+CMD ["node", "transcode.js"]
+```
+
+```javascript
+// transcode.js — triggered by Pub/Sub
+const { Storage } = require('@google-cloud/storage')
+const { execSync } = require('child_process')
+
+async function main() {
+  const { videoId, bucket } = JSON.parse(process.env.PAYLOAD)
+  const storage = new Storage()
+
+  // Download original
+  await storage.bucket(bucket).file(`uploads/${videoId}/original`)
+    .download({ destination: '/tmp/input.mp4' })
+
+  // Generate HLS at 3 quality levels
+  execSync(`ffmpeg -i /tmp/input.mp4 \
+    -filter_complex "[v:0]split=3[v1][v2][v3]; \
+      [v1]scale=1920:1080[720p]; \
+      [v2]scale=1280:720[480p];  \
+      [v3]scale=640:360[360p]" \
+    -map "[720p]" -b:v:0 5M \
+    -map "[480p]" -b:v:1 2M \
+    -map "[360p]" -b:v:2 800k \
+    -map 0:a -c:a aac -b:a 128k \
+    -f hls -hls_time 6 -hls_playlist_type vod \
+    -master_pl_name master.m3u8 \
+    -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2" \
+    /tmp/hls/%v/index.m3u8`)
+
+  // Upload all HLS segments to GCS
+  await storage.bucket(bucket).upload('/tmp/hls/', {
+    destination: `videos/${videoId}/`,
+    recursive: true
+  })
+}
+main()
+```
+
+File Validation (unchanged):
+  - MIME type check via file-type library
+  - Max size: 2GB
+  - Allowed types: video/mp4, video/webm, video/x-matroska
+
+
+================================================================================
+PART F — FRONTEND DESIGN SYSTEM
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+F1. DESIGN TOKENS (CSS Variables)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+```css
+:root {
+  /* Colors */
+  --bg-void:         #0A0A0F;
+  --bg-surface:      #13131A;
+  --bg-elevated:     #1C1C27;
+  --bg-glass:        rgba(19, 19, 26, 0.80);
+  --accent-gold:     #E5B754;
+  --accent-coral:    #FF6B35;
+  --accent-blue:     #4A9EFF;
+  --text-primary:    #F0EDE8;
+  --text-secondary:  #7A7A8C;
+  --text-muted:      #3A3A4A;
+  --border-subtle:   rgba(255, 255, 255, 0.06);
+  --border-active:   rgba(229, 183, 84, 0.30);
+
+  /* Sync Status Colors */
+  --sync-good:       #4CAF7D;
+  --sync-warn:       #F5A623;
+  --sync-bad:        #FF4444;
+
+  /* Spacing, Radii, Shadows, Animation unchanged */
+}
+```
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+F2. COMPONENT ARCHITECTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Unchanged from original blueprint — component structure is frontend-only
+ and independent of GCP choices.]
+
+src/
+├── app/
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── room/[id]/page.tsx
+├── components/
+│   ├── landing/  (Hero, Features, CreateRoom)
+│   ├── room/     (VideoStage, PlayerControls, SyncIndicator, CountdownOverlay,
+│   │              participants/, chat/, reactions/, queue/)
+│   └── ui/       (Button, Avatar, GlassPanel, Tooltip, Modal)
+├── hooks/
+│   ├── useSocket.ts       useClockSync.ts   useSyncEngine.ts
+│   ├── usePlaybackState.ts  useWebRTC.ts    useMedia.ts
+│   └── useVAD.ts          useReactions.ts
+│
+│   GCP-SPECIFIC HOOKS ADDED:
+│   ├── useFirebaseAuth.ts  — Firebase Auth state (replaces useSupabaseAuth)
+│   └── useGCSUpload.ts     — GCS signed URL upload with progress tracking
+│
+├── store/
+│   ├── roomSlice.ts   playbackSlice.ts   mediaSlice.ts   uiSlice.ts
+└── types/index.ts
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+F3. PERFORMANCE TARGETS & TECHNIQUES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Metric                     Target      Technique
+  ───────────────────────── ──────────── ──────────────────────────────────────
+  First Contentful Paint     < 1.2s      Vercel Edge CDN, bundle splitting
+  Time to Interactive        < 2.0s      Route-based lazy loading, preconnect
+  Room load (join → video)   < 3.0s      Pre-warm socket on landing page hover
+  Sync accuracy (steady)     < 80ms      D2 algorithm
+  WebRTC connection time     < 1.5s      ICE candidate pooling, trickle ICE
+  JS bundle (landing page)   < 80KB gz   Code splitting (Room code lazy loaded)
+  Video tile re-render rate  0/s normal  Zustand selectors, React.memo on tiles
+  Emoji reaction frame rate  60fps       CSS animations, will-change: transform
+
+  CRITICAL: No layout thrashing during sync corrections.
+    - Sync state stored in React refs (not useState) — no re-render on tick
+    - Player.seek() / Player.setRate() are imperative calls, not state updates
+
+  Cloud Run cold start mitigation:
+    - min-instances=1 for signaling server (no cold start on WS connections)
+    - Preconnect to Cloud Run URL from landing page:
+      <link rel="preconnect" href="https://synchra-signaling-xxx-uc.a.run.app">
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+F4. RESPONSIVE & MOBILE STRATEGY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Desktop (≥1024px):
+    - Video: left 65% of viewport
+    - Participant grid: bottom strip OR right panel toggle
+    - Chat: right panel (collapsible)
+    - Controls: bottom overlay bar
+
+  Mobile (< 768px):
+    - Video: full width, always visible
+    - Participants: horizontal scroll row, 80px × 80px tiles
+    - Controls: floating bottom bar (safe area inset aware)
+    - Chat: full-screen drawer with backdrop
+
+  iOS Safari specifics:
+    - playsInline required on <video> tags
+    - getUserMedia works on Safari 14.5+
+    - Avoid autoplay (iOS blocks) — show play button overlay
+
+  PWA manifest:
+    - display: "standalone"
+    - background_color: #0A0A0F
+    - theme_color: #E5B754
+
+
+================================================================================
+PART G — PERFORMANCE ENGINEERING
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+G1. SYNC ACCURACY BENCHMARKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Condition                 Teleparty   Original Plan    Synchra on GCP (target)
+  ──────────────────────── ──────────── ──────────────── ────────────────────────
+  Same city, fiber          ~300ms       < 50ms           < 40ms (GCP backbone)
+  Cross-country (US)        ~500ms       < 80ms           < 70ms
+  Cross-continent           ~800ms       < 150ms          < 130ms
+  High packet loss (5%)     ~1200ms      < 300ms          < 300ms
+  Host buffering event      All drift    All pause/sync   All pause/sync
+
+  GCP BONUS: Cloud Run in us-central1 has excellent peering with Indian
+  ISPs (your likely user base). Round-trip Mumbai → us-central1 ≈ 180ms.
+  Consider deploying a second Cloud Run service in asia-south1 (Mumbai)
+  to halve RTT for Indian users (both regions cost the same per vCPU-hour).
+
+  Multi-region setup (Phase 3):
+    - Redis Pub/Sub syncs room state across regions
+    - User's WebSocket connects to nearest Cloud Run region
+    - Same sync algorithm works cross-region via Redis channel
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+G2. NETWORK RESILIENCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Scenario                   Behaviour
+  ──────────────────────────  ─────────────────────────────────────────────────
+  Client loses WiFi <5s       Socket auto-reconnects. Clock re-synced on rejoin.
+  Client loses WiFi >30s      "Reconnecting..." overlay. On reconnect:
+                              seeks to current server position.
+  Host disconnects            Server detects via socket disconnect event.
+                              Promotes next-oldest participant to host.
+  Cloud Run restarts          Graceful shutdown (SIGTERM hook). New instance
+                              ready before old one terminates. Redis state
+                              preserved. Clients reconnect automatically.
+  Redis self-host restarts    Room state lost from memory. MITIGATION: periodic
+                              snapshot to Cloud SQL every 5 minutes.
+                              On restart, last known state restored from SQL.
+  High latency spike          syncQuality='unstable'. Drift tolerance → 300ms.
+                              Re-syncs clock. Yellow indicator shown.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+G3. SCALABILITY DESIGN ON GCP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Cloud Run auto-scaling for WebSocket server:
+    - --session-affinity: same client always routed to same instance
+    - --min-instances=1:  prevents cold starts killing WebSocket handshake
+    - --max-instances=10: caps spend during traffic spikes
+    - Redis adapter: instances share room state via Pub/Sub
+
+  P2P WebRTC (MVP):
+    - Full mesh, works well up to 8–10 participants.
+    - At 10+ users, switch to SFU.
+
+  SFU Migration (V2):
+    - LiveKit Server: open-source, self-hostable on Cloud Run.
+    - LiveKit Docker image → deploy as Cloud Run service (same project).
+    - Cost: LiveKit on 1 vCPU handles ~50 concurrent rooms of 10.
+    - Estimated: ~$15/month on GCP credits.
+
+  Socket.IO scaling:
+    - With Redis adapter: all Cloud Run instances share room state.
+    - Estimated capacity: 1 Cloud Run instance (2 vCPU, 512MB) handles
+      ~500 concurrent rooms of 5 participants.
+    - Scale to 3 instances = 1,500 concurrent rooms.
+
+  Database scaling:
+    - Cloud SQL db-f1-micro → db-g1-small when >100 concurrent users.
+    - Read replica for history queries (separate Cloud SQL instance).
+    - Connection pooling: Cloud SQL Auth Proxy + pg-pool (max 25 connections).
+
+
+================================================================================
+PART H — IMPLEMENTATION ROADMAP (GCP-PHASED)
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+H1. PHASE 1 — CORE (Weeks 1–4): Ship MVP. Zero GCP spend except Redis.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  GCP SETUP (Day 1 — Do This First):
+  ✦ Create GCP project: synchra-prod
+  ✦ Enable APIs: Cloud Run, Cloud SQL, Cloud Storage, Cloud Build,
+                  Pub/Sub, Secret Manager, Artifact Registry
+  ✦ Set billing account linked to your $300 credit
+  ✦ Set budget alert at $50, $150, $250 (Billing → Budgets & Alerts)
+  ✦ Create GCS bucket: gs://synchra-videos (us-central1)
+  ✦ Create Artifact Registry repo: us-central1-docker.pkg.dev/synchra-prod/app
+
+  Week 1: Foundation
+  ✦ Project scaffold (Vite + React 18 + TypeScript + Tailwind)
+  ✦ Fastify server + Socket.IO setup
+  ✦ Docker image for backend (multi-stage: build → slim Node image)
+  ✦ Self-hosted Redis on Cloud Run (redis:7-alpine, min-instances=1)
+  ✦ Supabase free tier for DB (skip Cloud SQL costs in dev)
+  ✦ Firebase Auth setup (Google + Anonymous providers)
+  ✦ Deploy backend to Cloud Run (signaling + API combined, split later)
+  ✦ Deploy frontend to Vercel (free hobby plan)
+  ✦ Cloud Build trigger: GitHub → auto-deploy on push to main
+  ✦ Domain: point Cloudflare DNS to Cloud Run URL and Vercel
+
+  Week 2: Core Sync
+  ✦ Clock sync (D3) — implement + unit test
+  ✦ PlaybackState state machine (D1) — server-side
+  ✦ SyncEngine (D2) — client-side drift correction
+  ✦ YouTube player integration (react-youtube)
+  ✦ Basic play/pause/seek sync working end-to-end
+
+  Week 3: WebRTC + UI
+  ✦ WebRTC peer connections (simple-peer)
+  ✦ Participant grid (dynamic layout)
+  ✦ Host buffering detection + countdown overlay
+  ✦ Text chat (Socket.IO events + UI)
+  ✦ Room creation + invite link + QR code
+
+  Week 4: Design + Polish
+  ✦ Cinema Noir design language implementation
+  ✦ Responsive layout (mobile + desktop)
+  ✦ Sync quality indicator (green/yellow/red)
+  ✦ Local video file upload → GCS signed URL → Cloud Run Job transcoding
+  ✦ PWA manifest + service worker
+  ✦ Launch: share publicly, gather feedback
+  ✦ Verify Phase 1 GCP spend < $20 total
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+H2. PHASE 2 — POWER (Weeks 5–8): Feature-complete. ~$25/month GCP spend.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Week 5: Social Layer + DB Migration
+  ✦ Migrate from Supabase free tier → Cloud SQL db-f1-micro
+  ✦ Cloud SQL Auth Proxy sidecar in Cloud Run service
+  ✦ Emoji reactions (floating animation overlay)
+  ✦ Voice activity detection (speaker ring glow)
+  ✦ Persistent rooms (saved to Cloud SQL)
+  ✦ User avatars + display name via Firebase + Cloud SQL profile table
+
+  Week 6: Collaborative Queue + GCS Hardening
+  ✦ Queue data model + Redis + Cloud SQL storage
+  ✦ Add/remove/reorder UI
+  ✦ "Playing next" preview strip
+  ✦ Auto-advance on video end
+  ✦ Cloudflare proxy for GCS bucket (zero egress cost for video streaming)
+  ✦ Verify GCS egress via Cloudflare is working
+
+  Week 7: Quality & Reliability
+  ✦ Adaptive bitrate WebRTC (RTCStatsReport monitoring)
+  ✦ Network quality dashboard (expandable panel)
+  ✦ HLS transcoding via Cloud Run Job + FFmpeg
+  ✦ Pub/Sub trigger for transcoding jobs
+  ✦ Room state periodic snapshot to Cloud SQL (Redis reliability fix)
+  ✦ Comprehensive error states + recovery UI
+
+  Week 8: Mobile & Observability
+  ✦ Mobile-optimized layout (safe areas, touch gestures)
+  ✦ iOS Safari edge cases (playsInline, getUserMedia)
+  ✦ Cloud Monitoring: uptime checks on Cloud Run URL (free tier)
+  ✦ Cloud Logging: structured logs from Fastify → GCP logs (free 50 GB/month)
+  ✦ Set up log-based alerts for error spikes
+  ✦ Verify Phase 2 GCP spend < $100 total
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+H3. PHASE 3 — SCALE (Weeks 9–12): Production-ready. ~$83/month GCP spend.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Week 9–10: SFU Migration + Memorystore
+  ✦ Upgrade Cloud SQL to db-g1-small (more connections)
+  ✦ Migrate Redis from self-hosted Cloud Run → Memorystore 1GB Basic
+     (eliminates Redis restart/state-loss risk)
+  ✦ Integrate LiveKit SDK (replaces simple-peer)
+  ✦ Deploy LiveKit server as Cloud Run service (same GCP project)
+  ✦ Test with 20–50 participant rooms
+
+  Week 11: Observability + Second Region
+  ✦ Cloud Monitoring dashboards: sync accuracy p50/p99, room counts, RTT
+  ✦ Cloud Trace: trace sync events end-to-end (free 2.5M spans/month)
+  ✦ Error tracking via Cloud Error Reporting (free)
+  ✦ Deploy Cloud Run signaling in asia-south1 (Mumbai) for Indian users
+  ✦ Multi-region Redis Pub/Sub for cross-region room state
+
+  Week 12: Growth Features
+  ✦ Scheduled rooms + calendar invite link
+  ✦ Room history + replay
+  ✦ Public room discovery
+  ✦ Screen share mode (getDisplayMedia)
+  ✦ Load test: 100 simultaneous rooms of 10 users each
+  ✦ Final GCP credit audit — verify < $250 total spend (50 credits buffer)
+
+
+================================================================================
+APPENDIX I — GCP CREDIT SPEND TRACKER
+================================================================================
+
+  Track this weekly in your GCP Console → Billing → Cost Table.
+  Filter by SKU to see per-service breakdown.
+
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  CREDIT CHECKPOINTS (set budget alerts for these)                      │
+  ├───────────────────────────┬────────────────────────────────────────────┤
+  │  After Week 4             │  Total spent < $20                        │
+  │  After Week 8             │  Total spent < $100                       │
+  │  After Week 12            │  Total spent < $250                       │
+  │  Buffer remaining         │  $50 (emergency runway / unexpected spike) │
+  └───────────────────────────┴────────────────────────────────────────────┘
+
+  KILL SWITCHES (if spend exceeds target):
+  1. Set Cloud Run --max-instances=1 (cap concurrent compute)
+  2. Delete Cloud SQL read replicas (use primary only)
+  3. Revert Memorystore → self-hosted Redis on Cloud Run (~$30 saved/month)
+  4. Enable Cloud Run scale-to-zero for all services (sacrifice cold starts)
+  5. Reduce GCS storage: delete old transcoded videos after 30 days
+
+
+================================================================================
+APPENDIX II — FREE TIER THRESHOLDS (When to Upgrade)
+================================================================================
+
+  Service              Free Tier               Upgrade Trigger
+  ─────────────────── ─────────────────────── ────────────────────────────────
+  Cloud Run           2M req/mo, 360k GB-s    >2M requests OR always-on needed
+  Cloud Build         120 min/day             Exceeding daily CI limit
+  Cloud Storage       5 GB, 1 GB egress       >5 GB stored (use Cloudflare CDN)
+  Firebase Auth       10,000 users/month      >10k MAU (switch to Firebase Blaze)
+  Vercel              Unlimited static CDN    Never (static files stay free)
+  Cloudflare          Unlimited CDN/DNS       Never for current plan
+  Supabase            500 MB DB, 1 week idle  Move to Cloud SQL at schema stable
+  Secret Manager      6 secrets free          >6 secrets ($0.06/10k accesses)
+  Cloud Monitoring    Metrics + logs free     Custom metrics > 150M points/month
+
+
+================================================================================
+APPENDIX III — QUICK REFERENCE: WHY SYNCHRA BEATS EVERYTHING
+================================================================================
+
+  Feature              Teleparty  Watch2Gether  Rave   WatchParty  SYNCHRA (GCP)
+  ──────────────────── ────────── ──────────── ────── ─────────── ────────────────────
+  No install required  ✗ Ext      ✓             ✗ App  ✓           ✓ Pure PWA
+  Sync accuracy        ~500ms     ~800ms        ~400ms ~300ms      < 80ms target
+  Video/audio chat     ✗          ✗             Voice  ✓           ✓ Full HD
+  Mobile support       ✗          Partial       ✓      ✗           ✓ Native-feel
+  Host buffer handling ✗ (drift)  ✗             ✗      ✗           ✓ Group pause
+  Emoji reactions      ✗          ✗             ✗      ✓           ✓ Floating
+  Collaborative queue  ✗          ✓             ✗      ✗           ✓
+  Max participants     1,000*     50            50     20          50 (→ 500 SFU)
+  Design quality       Poor       Poor          OK     Minimal     Cinema Noir
+  Infrastructure cost  —          —             —      —           < $25/month MVP
+  Build cost           —          —             —      —           $300 GCP credit
+
+
+================================================================================
+                                END OF BLUEPRINT
+================================================================================
+
+  This document defines the complete architecture for building the world's
+  best real-time watch party platform — entirely within GCP's $300 free
+  credit, with zero additional spend during development and early operation.
+
+  Key GCP decisions that maximize the $300 credit:
+  ┌────────────────────────────────────────────────────────────────────────┐
+  │  1. Cloud Run for backend — WebSocket support + scale to zero          │
+  │  2. Cloud SQL instead of Supabase — fully GCP-billed                  │
+  │  3. GCS instead of Cloudflare R2 — GCP-native, Cloudflare as CDN     │
+  │  4. Firebase Auth — free for 10k users, GCP ecosystem                 │
+  │  5. Self-hosted Redis → Memorystore (phase transition)                 │
+  │  6. Cloud Build for CI/CD — 120 min/day free                          │
+  │  7. Cloud Run Jobs for transcoding — zero idle cost                    │
+  │  8. Cloudflare for CDN/DNS — free forever, saves GCP CDN cost         │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  The core insight remains unchanged from v1.0:
+  Server-authoritative state machine + adaptive drift correction
+  + intelligent host buffering handling = a sync experience no one else has.
+
+  Now built entirely on GCP credits. Ship it.
+
+================================================================================
