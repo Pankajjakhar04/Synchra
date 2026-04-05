@@ -69,9 +69,9 @@ export async function roomRoutes(app: FastifyInstance): Promise<void> {
   })
 
   // ─── DELETE /rooms/:id — Delete room (host only) ─────────────────
-  app.delete('/rooms/:id', {
+  app.delete<{ Params: { id: string } }>('/rooms/:id', {
     preHandler: authMiddleware,
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+  }, async (request, reply) => {
     const room = await getRoom(request.params.id)
 
     if (!room) {
@@ -87,9 +87,9 @@ export async function roomRoutes(app: FastifyInstance): Promise<void> {
   })
 
   // ─── POST /rooms/:id/upload — Get GCS signed upload URL ─────────
-  app.post('/rooms/:id/upload', {
+  app.post<{ Params: { id: string } }>('/rooms/:id/upload', {
     preHandler: authMiddleware,
-  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply) => {
+  }, async (request, reply) => {
     const room = await getRoom(request.params.id)
     if (!room) {
       return reply.code(404).send({ error: 'Room not found' })

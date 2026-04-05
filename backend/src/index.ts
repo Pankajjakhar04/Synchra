@@ -19,9 +19,19 @@ async function bootstrap(): Promise<void> {
   initFirebase()
 
   // ─── Initialize Redis (connect early to fail fast) ───────────
-  const redis = getRedis()
-  await redis.ping()
-  console.log('[Redis] Ping OK')
+  // Skip Redis in production if not configured yet
+  if (process.env.REDIS_URL) {
+    try {
+      const redis = getRedis()
+      await redis.ping()
+      console.log('[Redis] Ping OK')
+    } catch (error) {
+      console.warn('[Redis] Warning: Redis connection failed, continuing without Redis')
+      console.warn(error)
+    }
+  } else {
+    console.warn('[Redis] Skipping Redis connection (REDIS_URL not set)')
+  }
 
   // ─── Create Fastify Instance ─────────────────────────────────
   const app = Fastify({

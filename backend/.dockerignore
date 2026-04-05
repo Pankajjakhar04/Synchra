@@ -7,11 +7,9 @@ npm-debug.log
 *.log
 .git
 .gitignore
-README.md
 .vscode
 .idea
 coverage
 .nyc_output
-*.md
-Dockerfile
-.dockerignore
+README.md
+Dockerfile.dev
