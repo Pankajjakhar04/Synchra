@@ -1,0 +1,20 @@
+{
+  "name": "synchra-frontend",
+  "version": "1.0.0",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "outputDirectory": "dist",
+  "regions": ["iad1"],
+  "env": {
+    "VITE_API_URL": "@synchra-api-url",
+    "VITE_SOCKET_URL": "@synchra-socket-url",
+    "VITE_FIREBASE_API_KEY": "@firebase-api-key",
+    "VITE_FIREBASE_AUTH_DOMAIN": "@firebase-auth-domain",
+    "VITE_FIREBASE_PROJECT_ID": "@firebase-project-id",
+    "VITE_FIREBASE_STORAGE_BUCKET": "@firebase-storage-bucket",
+    "VITE_FIREBASE_MESSAGING_SENDER_ID": "@firebase-messaging-sender-id",
+    "VITE_FIREBASE_APP_ID": "@firebase-app-id"
+  }
+}

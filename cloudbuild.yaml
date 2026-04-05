@@ -1,0 +1,115 @@
+# Cloud Build configuration for automated deployment
+# Triggered on push to main branch
+
+steps:
+  # Step 1: Build backend Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REGISTRY_NAME}/backend:$SHORT_SHA'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REGISTRY_NAME}/backend:latest'
+      - '-f'
+      - 'backend/Dockerfile'
+      - './backend'
+    id: 'build-backend'
+
+  # Step 2: Push backend image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '--all-tags'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REGISTRY_NAME}/backend'
+    id: 'push-backend'
+    waitFor: ['build-backend']
+
+  # Step 3: Deploy backend to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'synchra-backend'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REGISTRY_NAME}/backend:$SHORT_SHA'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--timeout'
+      - '300'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+      - '--set-secrets'
+      - 'FIREBASE_SERVICE_ACCOUNT=firebase-admin-key:latest'
+    id: 'deploy-backend'
+    waitFor: ['push-backend']
+
+  # Step 4: Build Redis image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REGISTRY_NAME}/redis:latest'
+      - '-f'
+      - 'redis/Dockerfile'
+      - './redis'
+    id: 'build-redis'
+
+  # Step 5: Push Redis image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REGISTRY_NAME}/redis:latest'
+    id: 'push-redis'
+    waitFor: ['build-redis']
+
+  # Step 6: Deploy Redis to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'synchra-redis'
+      - '--image'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REGISTRY_NAME}/redis:latest'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--no-allow-unauthenticated'
+      - '--min-instances'
+      - '1'
+      - '--max-instances'
+      - '1'
+      - '--memory'
+      - '256Mi'
+      - '--cpu'
+      - '1'
+      - '--port'
+      - '6379'
+    id: 'deploy-redis'
+    waitFor: ['push-redis']
+
+# Substitutions
+substitutions:
+  _REGION: us-central1
+  _REGISTRY_NAME: app
+
+# Build timeout
+timeout: 1200s
+
+# Options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
