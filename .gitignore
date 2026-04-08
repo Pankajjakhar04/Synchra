@@ -21,3 +21,5 @@ SYNCHRA_BLUEPRINT_GCP.txt
 *firebase*.json
 *adminsdk*.json
 serviceAccountKey.json
+.vercel
+.env*.local
