@@ -9,6 +9,7 @@ import { usePlaybackStore } from '../store/playbackStore'
 import { useUIStore } from '../store/uiStore'
 import { CountdownOverlay } from '../components/room/CountdownOverlay'
 import { ChatSidebar } from '../components/room/ChatSidebar'
+import { QueueSidebar } from '../components/room/QueueSidebar'
 import { SyncIndicator } from '../components/room/SyncIndicator'
 import { ReactionOverlay } from '../components/room/ReactionOverlay'
 import { ParticipantGrid } from '../components/room/ParticipantGrid'
@@ -17,6 +18,7 @@ import { HostControlsBar } from '../components/room/HostControlsBar'
 import { Avatar } from '../components/ui/Avatar'
 import { Button } from '../components/ui/Button'
 import { GlassPanel } from '../components/ui/GlassPanel'
+import { Participant } from '../types'
 
 // ─── Parse YouTube URL or bare ID ────────────────────────────────
 function parseYouTubeId(input: string): string | null {
@@ -129,13 +131,19 @@ export default function Room() {
     setJoining, setError,
   } = useRoomStore()
   const { state: playback, notice } = usePlaybackStore()
-  const { isChatOpen, toggleChat } = useUIStore()
+  const { isChatOpen, toggleChat, isQueueOpen, toggleQueue, isTheatreMode, toggleTheatre } = useUIStore()
+  const queue = useRoomStore(s => s.queue)
 
-  const resolvedLocalUserId = localUserId ?? user?.uid ?? ''
+  // Use the server-provided localUserId as the canonical identity.
+  // Falling back to Firebase/guest uid can break WebRTC signaling in guest mode
+  // (server generates anon_… IDs).
+  const resolvedLocalUserId = localUserId ?? ''
 
   const [displayName, setDisplayName] = useState('')
   const [hasJoined,   setHasJoined]   = useState(false)
   const [showJoinForm, setShowJoinForm] = useState(true)
+  const [toasts, setToasts] = useState<Array<{ id: number; text: string }>>([])
+  const toastId = useRef(0)
 
   // Auto sign-in anonymous if no user
   useEffect(() => {
@@ -143,6 +151,24 @@ export default function Room() {
       signInAnon()
     }
   }, [authLoading, user, signInAnon])
+
+  // ── Join / leave toast notifications ─────────────────────────
+  useEffect(() => {
+    if (!socket) return
+    const showToast = (text: string) => {
+      const id = ++toastId.current
+      setToasts(prev => [...prev.slice(-4), { id, text }])
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000)
+    }
+    const onJoin = (p: Participant) => showToast(`${p.displayName} joined`)
+    const onLeft = ({ userId: uid }: { userId: string }) => {
+      const p = participants[uid]
+      if (p) showToast(`${p.displayName} left`)
+    }
+    socket.on('room:participantJoined', onJoin)
+    socket.on('room:participantLeft', onLeft)
+    return () => { socket.off('room:participantJoined', onJoin); socket.off('room:participantLeft', onLeft) }
+  }, [socket, participants])
 
   // Listen for video load requests dispatched by VideoStage
   useEffect(() => {
@@ -390,6 +416,26 @@ export default function Room() {
         {/* Host: Change Video button (always visible) */}
         {isHost && <HeaderChangeVideo emit={emit} />}
 
+        {/* Queue toggle */}
+        <button
+          onClick={toggleQueue}
+          className={`btn ${isQueueOpen ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ padding: '0.25rem 0.625rem', fontSize: '0.75rem' }}
+          title="Video queue"
+        >
+          📋 Queue{queue.length > 0 ? ` (${queue.length})` : ''}
+        </button>
+
+        {/* Theatre mode toggle */}
+        <button
+          onClick={toggleTheatre}
+          className={`btn ${isTheatreMode ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ padding: '0.25rem 0.625rem', fontSize: '0.75rem' }}
+          title={isTheatreMode ? 'Exit theatre mode' : 'Theatre mode'}
+        >
+          {isTheatreMode ? '⊡' : '⊞'}
+        </button>
+
         {/* Invite button */}
         <button
           id="invite-btn"
@@ -439,27 +485,67 @@ export default function Room() {
           <ReactionOverlay socket={socket} />
         </div>
 
-        {/* Participants Side Grid */}
-        <div 
-          style={{ 
-            flex: 1, 
-            minWidth: '280px',
-            maxWidth: '350px',
-            background: 'var(--bg-surface)', 
-            borderLeft: '1px solid var(--border-subtle)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
-              👥 Watchers
-            </span>
+        {/* Participants Side Grid — hidden in theatre mode */}
+        {!isTheatreMode && (
+          <div 
+            style={{ 
+              flex: 1, 
+              minWidth: '280px',
+              maxWidth: '350px',
+              background: 'var(--bg-surface)', 
+              borderLeft: '1px solid var(--border-subtle)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
+                👥 Watchers
+              </span>
+              {/* Host transfer — only visible to host */}
+              {isHost && participantList.length > 1 && (
+                <select
+                  onChange={(e) => { if (e.target.value) { emit('room:transferHost', { targetUserId: e.target.value }); e.target.value = '' } }}
+                  value=""
+                  style={{ fontSize: '0.6875rem', background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-secondary)', padding: '0.125rem 0.375rem', cursor: 'pointer' }}
+                  title="Transfer host role"
+                >
+                  <option value="" disabled>👑 Transfer</option>
+                  {participantList.filter(p => p.userId !== resolvedLocalUserId).map(p => (
+                    <option key={p.userId} value={p.userId}>{p.displayName}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              {resolvedLocalUserId && (
+                <ParticipantGrid socket={socket} localUserId={resolvedLocalUserId} />
+              )}
+            </div>
           </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <ParticipantGrid socket={socket} localUserId={resolvedLocalUserId} />
-          </div>
-        </div>
+        )}
+
+        {/* Queue sidebar */}
+        <AnimatePresence>
+          {isQueueOpen && (
+            <motion.div
+              key="queue"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 320, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              style={{ overflow: 'hidden', flexShrink: 0, background: 'var(--bg-surface)', borderLeft: '1px solid var(--border-subtle)' }}
+            >
+              <QueueSidebar
+                queue={queue}
+                currentVideoId={playback?.videoId ?? null}
+                isHost={isHost}
+                socket={socket}
+                onPlayVideo={(item) => emit('playback:setVideo', { videoId: item.videoId, videoType: item.videoType })}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Chat sidebar */}
         <AnimatePresence>
@@ -473,7 +559,7 @@ export default function Room() {
               transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               style={{ overflow: 'hidden', flexShrink: 0 }}
             >
-              <ChatSidebar socket={socket} localUserId={resolvedLocalUserId} />
+              <ChatSidebar socket={socket} localUserId={resolvedLocalUserId || ''} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -497,6 +583,34 @@ export default function Room() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Join / Leave Toasts */}
+      <div style={{ position: 'fixed', bottom: '1.5rem', left: '1.5rem', zIndex: 250, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <AnimatePresence>
+          {toasts.map(t => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, x: -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '9999px',
+                background: 'var(--bg-glass)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-secondary)',
+                fontSize: '0.8125rem',
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t.text}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }

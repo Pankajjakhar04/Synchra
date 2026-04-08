@@ -5,12 +5,15 @@ import { registerRoomHandlers } from './roomHandlers'
 import { registerClockHandlers } from './clockHandlers'
 
 export function setupSocketIO(io: Server): void {
-  // ─── Redis Adapter (allows horizontal scaling on Cloud Run) ───
+  // ─── Redis Adapter (optional - allows horizontal scaling on Cloud Run) ───
   const pubClient = getRedis()
-  const subClient = pubClient.duplicate()
-
-  io.adapter(createAdapter(pubClient, subClient))
-  console.log('[Socket.IO] Redis adapter attached')
+  if (pubClient) {
+    const subClient = pubClient.duplicate()
+    io.adapter(createAdapter(pubClient, subClient))
+    console.log('[Socket.IO] Redis adapter attached')
+  } else {
+    console.log('[Socket.IO] Using default in-memory adapter (no Redis)')
+  }
 
   // ─── Room namespace: /room ─────────────────────────────────────
   const roomNs = io.of('/room')

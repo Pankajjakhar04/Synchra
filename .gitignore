@@ -13,6 +13,9 @@ coverage/
 *.tsbuildinfo
 SYNCHRA_BLUEPRINT_GCP.txt
 
+*.md
+!README.md
+
 
 # Firebase/GCP credentials
 *firebase*.json

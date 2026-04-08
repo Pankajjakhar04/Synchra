@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '../../components/ui/Button'
+import { apiUrl } from '../../lib/api'
 
 interface CreateRoomButtonProps {
   className?: string
@@ -17,7 +18,7 @@ export function CreateRoomButton({ className = '' }: CreateRoomButtonProps) {
     setError(null)
 
     try {
-      const res = await fetch('/api/rooms', {
+      const res = await fetch(apiUrl('/api/rooms'), {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({}),

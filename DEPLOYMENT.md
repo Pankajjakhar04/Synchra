@@ -1,4 +1,4 @@
-# Synchra Deployment Guide - Week 1
+# Synchra Deployment Guide
 
 This guide walks you through deploying Synchra to GCP with the $300 free credit.
 
@@ -9,8 +9,7 @@ This guide walks you through deploying Synchra to GCP with the $300 free credit.
 3. **Docker** installed locally
 4. **Vercel Account** (free tier)
 5. **Firebase Project** created
-6. **Supabase Account** (free tier)
-7. **Cloudflare Account** (free tier)
+6. **Cloudflare Account** (free tier) - optional for CDN
 
 ## Step-by-Step Deployment
 
@@ -69,15 +68,34 @@ gcloud auth configure-docker us-central1-docker.pkg.dev
    - Go to Project Settings → General
    - Under "Your apps" → Web app → Copy config object
 
-### 3. Supabase Setup (Phase 1 - Free Tier)
+### 3. Secrets Setup
 
-1. Go to [Supabase](https://supabase.com/)
-2. Create new project
-3. Note down:
-   - `SUPABASE_URL`
-   - `SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_KEY`
-4. Run database migrations (see `backend/migrations/`)
+Store the following secrets in GCP Secret Manager:
+
+```bash
+# Firebase credentials (individual values from Admin SDK JSON)
+gcloud secrets create firebase-project-id --replication-policy="automatic"
+echo -n "your-project-id" | gcloud secrets versions add firebase-project-id --data-file=-
+
+gcloud secrets create firebase-client-email --replication-policy="automatic"
+echo -n "firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com" | gcloud secrets versions add firebase-client-email --data-file=-
+
+gcloud secrets create firebase-private-key --replication-policy="automatic"
+# Store the full private key including newlines
+gcloud secrets versions add firebase-private-key --data-file=path/to/private-key.txt
+
+# JWT Secret (generate with: openssl rand -hex 32)
+gcloud secrets create jwt-secret --replication-policy="automatic"
+echo -n "your-generated-secret" | gcloud secrets versions add jwt-secret --data-file=-
+
+# GCS bucket name
+gcloud secrets create gcs-bucket-name --replication-policy="automatic"
+echo -n "synchra-videos" | gcloud secrets versions add gcs-bucket-name --data-file=-
+
+# Redis URL (after deploying Redis to Cloud Run)
+gcloud secrets create redis-url --replication-policy="automatic"
+echo -n "redis://synchra-redis-xxxxx-uc.a.run.app:6379" | gcloud secrets versions add redis-url --data-file=-
+```
 
 ### 4. Backend Deployment
 
@@ -167,32 +185,33 @@ gcloud run services describe synchra-backend --region us-central1 --format 'valu
 
 ### 7. Environment Variables
 
-Create `.env` files:
+**Note:** In production, secrets are loaded from GCP Secret Manager (configured in cloudbuild.yaml).
+For local development, create `.env` files:
 
-**backend/.env**:
+**backend/.env** (see `.env.example` for full list):
 ```env
-NODE_ENV=production
-PORT=8080
+NODE_ENV=development
+PORT=3000
+FRONTEND_URL=http://localhost:5173
 
-# Firebase
-FIREBASE_SERVICE_ACCOUNT=<loaded from Secret Manager>
+# Firebase Admin SDK
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxx@your-project.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
-# Supabase
-SUPABASE_URL=<your-supabase-url>
-SUPABASE_SERVICE_KEY=<your-service-key>
+# Redis (optional - falls back to in-memory)
+REDIS_URL=redis://localhost:6379
 
-# Redis
-REDIS_URL=<cloud-run-redis-url>
-REDIS_PASSWORD=<generate-strong-password>
+# GCS for video uploads
+GCS_BUCKET_NAME=synchra-videos
 
-# GCS
-GCS_BUCKET=synchra-videos
+# JWT Secret
+JWT_SECRET=your-secret-key
 ```
 
-**frontend/.env.production**:
+**frontend/.env** (see `.env.example` for full list):
 ```env
-VITE_API_URL=https://api.yourdomain.com
-VITE_SOCKET_URL=https://api.yourdomain.com
+VITE_BACKEND_URL=http://localhost:3000
 
 VITE_FIREBASE_API_KEY=<from-firebase-config>
 VITE_FIREBASE_AUTH_DOMAIN=<from-firebase-config>

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react'
 import { YouTubePlayer } from './YouTubePlayer'
+import { DirectVideoPlayer } from './DirectVideoPlayer'
 import { usePlaybackStore } from '../../store/playbackStore'
 import { useRoomStore } from '../../store/roomStore'
 
@@ -115,6 +116,11 @@ export function VideoStage() {
   // ── YouTube ───────────────────────────────────────────────────
   if (videoType === 'youtube') {
     return <YouTubePlayer videoId={videoId} isHost={isHost} />
+  }
+
+  // ── Direct URL / Uploaded video ────────────────────────────────
+  if (videoType === 'url' || videoType === 'upload') {
+    return <DirectVideoPlayer videoId={videoId} isHost={isHost} />
   }
 
   return (

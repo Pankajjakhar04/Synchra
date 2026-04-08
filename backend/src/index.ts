@@ -9,6 +9,8 @@ import { initFirebase } from './lib/firebase'
 import { setupSocketIO } from './socket/index'
 import { roomRoutes } from './routes/rooms'
 import { authRoutes } from './routes/auth'
+import { profileRoutes } from './routes/profile'
+import { setLogger, generateRequestId } from './lib/logger'
 
 const PORT         = parseInt(process.env.PORT || '3000')
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
@@ -23,24 +25,30 @@ async function bootstrap(): Promise<void> {
   if (process.env.REDIS_URL) {
     try {
       const redis = getRedis()
-      await redis.ping()
-      console.log('[Redis] Ping OK')
+      if (redis) {
+        await redis.ping()
+        console.log('[Redis] Ping OK')
+      }
     } catch (error) {
       console.warn('[Redis] Warning: Redis connection failed, continuing without Redis')
       console.warn(error)
     }
   } else {
-    console.warn('[Redis] Skipping Redis connection (REDIS_URL not set)')
+    console.log('[Redis] Using in-memory storage (REDIS_URL not set)')
   }
 
   // ─── Create Fastify Instance ─────────────────────────────────
   const app = Fastify({
     logger: {
-      level:     NODE_ENV === 'production' ? 'info' : 'warn',
+      level:     NODE_ENV === 'production' ? 'info' : 'debug',
       transport: NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
     },
-    disableRequestLogging: NODE_ENV === 'production',
+    disableRequestLogging: false,
+    genReqId: () => generateRequestId(),
   })
+
+  // Set up shared logger
+  setLogger(app.log)
 
   // ─── Security & CORS ─────────────────────────────────────────
   await app.register(helmet, {
@@ -53,6 +61,8 @@ async function bootstrap(): Promise<void> {
       'http://localhost:5173',
       'http://localhost:3000',
       /\.synchra\.app$/,
+      /\.vercel\.app$/,
+      /synchra.*\.vercel\.app$/,
     ],
     credentials: true,
     methods:     ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -63,6 +73,14 @@ async function bootstrap(): Promise<void> {
     max:        100,
     timeWindow: '1 minute',
   })
+
+  // ─── Root Route ─────────────────────────────────────────────
+  app.get('/', async () => ({
+    name:    'Synchra API',
+    version: '1.0.0',
+    status:  'running',
+    docs:    '/health for health check, /api/* for API endpoints',
+  }))
 
   // ─── Health Check ─────────────────────────────────────────────
   app.get('/health', async () => ({
@@ -75,6 +93,7 @@ async function bootstrap(): Promise<void> {
   // ─── API Routes ───────────────────────────────────────────────
   await app.register(roomRoutes, { prefix: '/api' })
   await app.register(authRoutes, { prefix: '/api' })
+  await app.register(profileRoutes, { prefix: '/api' })
 
   // ─── Attach Socket.IO directly to Fastify's underlying server ─
   // Must call app.listen() first so app.server is bound

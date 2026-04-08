@@ -668,3 +668,95 @@ input, textarea, select {
 .pointer-events-none { pointer-events: none; }
 .cursor-pointer { cursor: pointer; }
 .select-none { user-select: none; }
+
+/* ────────────────────────────────────────────
+   MOBILE & SAFE AREA UTILITIES
+   ──────────────────────────────────────────── */
+
+/* Safe area CSS variables (set by useMobileLayout hook) */
+:root {
+  --sat: env(safe-area-inset-top);
+  --sar: env(safe-area-inset-right);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --vh: 1vh;
+  --viewport-height: 100vh;
+}
+
+/* Use 100dvh where supported, fallback to var(--vh) */
+.h-screen-safe {
+  height: 100vh;
+  height: 100dvh;
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+.min-h-screen-safe {
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
+/* Safe area padding */
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pr-safe { padding-right: env(safe-area-inset-right); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.pl-safe { padding-left: env(safe-area-inset-left); }
+.p-safe {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Mobile-optimized touch targets */
+@media (max-width: 767px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Larger tap targets on mobile */
+  button, 
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+  }
+  
+  /* Hide scrollbars on mobile for cleaner UI */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Prevent overscroll/bounce on iOS */
+.no-overscroll {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* iOS video fixes */
+video {
+  -webkit-playsinline: true;
+}
+
+/* Disable text selection on interactive elements */
+.no-select {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Mobile landscape optimization */
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    --sp-4: 0.75rem;
+    --sp-6: 1rem;
+  }
+  
+  .hide-landscape-mobile {
+    display: none !important;
+  }
+}

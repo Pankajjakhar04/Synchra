@@ -32,10 +32,10 @@ USER synchra
 
 # Cloud Run: PORT env var is provided by the platform
 ENV NODE_ENV=production
-EXPOSE 3001
+EXPOSE 3000
 
 # Health check for Cloud Run
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 CMD ["node", "dist/index.js"]

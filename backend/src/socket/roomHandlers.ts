@@ -16,6 +16,7 @@ import {
   setRoomHost,
   refreshPresence,
   updateRoomQueue,
+  updateRoomPlayback,
   updateParticipant,
 } from '../lib/redis'
 import { verifyFirebaseToken } from '../lib/firebase'
@@ -214,15 +215,26 @@ function registerWebRTCHandlers(
   userId: string
 ): void {
   // Forward WebRTC signals directly to target peer
-  socket.on('webrtc:signal', (payload: WebRTCSignal) => {
-    const targetSocket = [...io.sockets.sockets.values()].find(
-      (s) => s.data.userId === payload.targetUserId && s.rooms.has(roomId)
+  // NOTE: io here is actually the /room namespace
+  socket.on('webrtc:signal', async (payload: WebRTCSignal) => {
+    console.log(`[WebRTC] Signal from ${userId} to ${payload.targetUserId}`)
+    
+    // Get all sockets in the room
+    const sockets = await io.in(roomId).fetchSockets()
+    
+    // Find the target socket
+    const targetSocket = sockets.find(
+      (s) => s.data.userId === payload.targetUserId
     )
+    
     if (targetSocket) {
+      console.log(`[WebRTC] Forwarding signal to ${payload.targetUserId}`)
       targetSocket.emit('webrtc:signal', {
         ...payload,
         fromUserId: userId,
       })
+    } else {
+      console.log(`[WebRTC] Target socket not found for ${payload.targetUserId}`)
     }
   })
 }
@@ -275,6 +287,30 @@ function registerQueueHandlers(
     await updateRoomQueue(roomId, q)
     io.to(roomId).emit('queue:updated', { queue: q })
   })
+
+  // ─── QUEUE: AUTO-ADVANCE ─ play next item in queue ────────
+  socket.on('queue:next', async () => {
+    const room = await getRoom(roomId)
+    if (!room || room.hostId !== userId) return
+    if (room.queue.length === 0) return
+
+    // Find current video index, advance to next
+    const currentIdx = room.queue.findIndex(q => q.videoId === room.playback.videoId)
+    const nextIdx = currentIdx + 1
+    if (nextIdx >= room.queue.length) return // nothing next
+
+    const next = room.queue[nextIdx]
+    const { createInitialPlaybackState } = await import('../types/index')
+    const newState = {
+      ...createInitialPlaybackState(next.videoId, next.videoType),
+      isPlaying: true,
+      baseServerTime: Date.now(),
+    }
+
+    await updateRoomPlayback(roomId, newState)
+    io.to(roomId).emit('playback:state', newState)
+    console.log(`[Room ${roomId}] Auto-advanced to next queue item: ${next.title}`)
+  })
 }
 
 // ─── MEDIA STATE HANDLERS (mute/camera) ──────────────────────
@@ -292,5 +328,25 @@ function registerMediaStateHandlers(
   socket.on('media:cameraOff', async (payload: { isCameraOff: boolean }) => {
     await updateParticipant(roomId, userId, { isCameraOff: payload.isCameraOff })
     socket.to(roomId).emit('room:participantUpdated', { userId, isCameraOff: payload.isCameraOff })
+  })
+
+  // Voice activity detection - broadcast speaking state to room
+  socket.on('voice:speaking', (payload: { isSpeaking: boolean }) => {
+    socket.to(roomId).emit('voice:speaking', { userId, isSpeaking: payload.isSpeaking })
+  })
+
+  // ─── HOST TRANSFER ────────────────────────────────────────
+  socket.on('room:transferHost', async (payload: { targetUserId: string }) => {
+    const room = await getRoom(roomId)
+    if (!room || room.hostId !== userId) return // only current host can transfer
+
+    const targetExists = (await getRoomParticipants(roomId)).some(p => p.userId === payload.targetUserId)
+    if (!targetExists) return
+
+    await setRoomHost(roomId, payload.targetUserId)
+    await updateParticipant(roomId, userId, { isHost: false })
+    await updateParticipant(roomId, payload.targetUserId, { isHost: true })
+    io.to(roomId).emit('room:hostChanged', { newHostId: payload.targetUserId })
+    console.log(`[Room ${roomId}] Host transferred from ${userId} to ${payload.targetUserId}`)
   })
 }

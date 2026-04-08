@@ -10,7 +10,7 @@ import { usePlaybackStore } from '../store/playbackStore'
 
 const TICK_INTERVAL = 500   // ms
 
-// Drift thresholds
+// Drift thresholds (in seconds)
 const DRIFT_NEGLIGIBLE  = 0.080  // < 80ms  → do nothing
 const DRIFT_MINOR       = 0.500  // < 500ms → rate nudge (±4%)
 const DRIFT_SIGNIFICANT = 30     // < 30s   → hard seek
@@ -48,6 +48,7 @@ export function useSyncEngine({
   // Use refs for sync-critical values — NO re-renders
   const lastSeekAt     = useRef<number>(0)
   const tickRef        = useRef<ReturnType<typeof setInterval> | null>(null)
+  const logThrottle    = useRef<number>(0)
 
   const computeExpected = useCallback((state: PlaybackState): number => {
     if (!state.isPlaying || state.isBuffering) return state.baseVideoTime
@@ -67,6 +68,7 @@ export function useSyncEngine({
 
     const absDrift = Math.abs(drift)
     let quality: SyncQuality = 'good'
+    let action = 'none'
 
     if (absDrift < DRIFT_NEGLIGIBLE) {
       // TIER 1 — Negligible: reset rate if it was nudged
@@ -80,6 +82,7 @@ export function useSyncEngine({
       const targetRate = drift > 0 ? RATE_BEHIND : RATE_AHEAD
       if (Math.abs(player.getPlaybackRate() - targetRate) > 0.01) {
         player.setPlaybackRate(targetRate)
+        action = `rate ${targetRate}`
       }
       // Reset when close enough
       if (absDrift < RATE_RESET_THRESHOLD) {
@@ -94,23 +97,45 @@ export function useSyncEngine({
         player.seekTo(Math.max(0, expected), true)
         player.setPlaybackRate(1.0)
         lastSeekAt.current = now
+        action = `seek to ${expected.toFixed(2)}`
       }
       quality = 'warn'
 
     } else {
       // TIER 4 — Extreme: recovering from disconnect, ignore
       quality = 'bad'
+      action = 'extreme drift, ignoring'
     }
 
-    // Report sync quality to store (for indicator dot) and to server
+    // Throttled logging (every 5 seconds)
+    const now = Date.now()
+    if (now - logThrottle.current > 5000 && absDrift > DRIFT_NEGLIGIBLE) {
+      console.log(`[SyncEngine] drift=${(drift * 1000).toFixed(0)}ms, expected=${expected.toFixed(2)}, actual=${actual.toFixed(2)}, action=${action}`)
+      logThrottle.current = now
+    }
+
+    // Report sync quality to store (for indicator dot)
     setSyncQuality(quality, Math.round(drift * 1000))
 
   }, [player, playbackState, isHost, computeExpected, setSyncQuality])
 
   useEffect(() => {
-    tickRef.current = setInterval(tick, TICK_INTERVAL)
-    return () => {
-      clearInterval(tickRef.current!)
+    // Clear any existing interval
+    if (tickRef.current) {
+      clearInterval(tickRef.current)
     }
-  }, [tick])
+    
+    // Only start if we have a player and we're not the host
+    if (player && !isHost) {
+      console.log('[SyncEngine] Starting sync engine (non-host)')
+      tickRef.current = setInterval(tick, TICK_INTERVAL)
+    }
+    
+    return () => {
+      if (tickRef.current) {
+        clearInterval(tickRef.current)
+        tickRef.current = null
+      }
+    }
+  }, [tick, player, isHost])
 }

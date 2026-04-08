@@ -7,22 +7,45 @@ interface VideoTileProps {
   participant: Participant
   stream: MediaStream | null
   isLocal?: boolean
+  isSpeaking?: boolean
 }
 
-export function VideoTile({ participant, stream, isLocal = false }: VideoTileProps) {
+export function VideoTile({ participant, stream, isLocal = false, isSpeaking = false }: VideoTileProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream
+    const video = videoRef.current
+    if (!video) return
+
+    if (stream) {
+      // Assign stream to video element
+      video.srcObject = stream
+
+      // Explicitly call play() — autoPlay attribute alone is unreliable
+      // across browsers, especially for elements with audio tracks.
+      video.play().catch((err) => {
+        // Autoplay blocked (user hasn't interacted yet).
+        // Retry on next user interaction.
+        console.warn('[VideoTile] play() blocked:', err.message)
+        const resumeOnInteraction = () => {
+          video.play().catch(() => {})
+          document.removeEventListener('click', resumeOnInteraction)
+          document.removeEventListener('touchstart', resumeOnInteraction)
+        }
+        document.addEventListener('click', resumeOnInteraction, { once: true })
+        document.addEventListener('touchstart', resumeOnInteraction, { once: true })
+      })
+    } else {
+      video.srcObject = null
     }
   }, [stream])
 
   const showFallback = !stream || participant.isCameraOff
+  const showSpeakingRing = isSpeaking && !participant.isMuted
 
   return (
     <div
-      className={`video-tile ${!participant.isMuted ? 'speaking' : ''}`}
+      className={`video-tile ${showSpeakingRing ? 'speaking' : ''}`}
       style={{
         position: 'relative',
         width: '100%',
@@ -30,7 +53,13 @@ export function VideoTile({ participant, stream, isLocal = false }: VideoTilePro
         background: 'var(--bg-elevated)',
         borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
-        border: '1px solid var(--border-subtle)',
+        border: showSpeakingRing 
+          ? '2px solid var(--accent-gold)' 
+          : '1px solid var(--border-subtle)',
+        boxShadow: showSpeakingRing 
+          ? '0 0 20px rgba(229, 183, 84, 0.4), 0 0 40px rgba(229, 183, 84, 0.2)' 
+          : 'none',
+        transition: 'border-color 0.2s, box-shadow 0.2s',
       }}
     >
       {/* Video Stream */}

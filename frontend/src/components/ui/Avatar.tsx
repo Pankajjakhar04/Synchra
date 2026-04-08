@@ -3,7 +3,7 @@ import React from 'react'
 interface AvatarProps {
   displayName: string
   avatarUrl?:  string | null
-  size?:       'xs' | 'sm' | 'md' | 'lg'
+  size?:       'xs' | 'sm' | 'md' | 'lg' | 'xl'
   isHost?:     boolean
   className?:  string
 }
@@ -13,6 +13,7 @@ const SIZES = {
   sm: { outer: 32, font: 12 },
   md: { outer: 40, font: 14 },
   lg: { outer: 56, font: 20 },
+  xl: { outer: 80, font: 28 },
 }
 
 // Generate deterministic color from name

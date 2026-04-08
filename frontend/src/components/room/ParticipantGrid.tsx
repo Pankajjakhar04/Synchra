@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { VideoTile } from './VideoTile'
 import { Participant } from '../../types'
 import { useRoomStore } from '../../store/roomStore'
@@ -38,6 +38,17 @@ export function ParticipantGrid({ socket, localUserId }: ParticipantGridProps) {
     socket?.emit('media:cameraOff', { isCameraOff: newCameraOff })
   }
 
+  // Build the list: local user first, then ALL remote participants.
+  // Attach WebRTC streams where available; show avatar fallback otherwise.
+  const remoteParticipants = useMemo(() => {
+    return participantIds
+      .filter((uid) => uid !== localUserId)
+      .map((uid) => ({
+        participant: participants[uid],
+        stream: peers[uid]?.stream ?? null,
+      }))
+  }, [participantIds, localUserId, participants, peers])
+
   // Determine grid layout based on count
   const count = participantIds.length
   let gridColumns = 1
@@ -71,16 +82,14 @@ export function ParticipantGrid({ socket, localUserId }: ParticipantGridProps) {
           </motion.div>
         )}
 
-        {/* Remote Peers */}
-        {Object.values(peers).map(peerState => {
-          const participant = participants[peerState.userId]
+        {/* ALL Remote Participants — stream attached where WebRTC is connected */}
+        {remoteParticipants.map(({ participant, stream }) => {
           if (!participant) return null
-          
           return (
-            <motion.div key={peerState.userId} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }}>
+            <motion.div key={participant.userId} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }}>
               <VideoTile 
                 participant={participant} 
-                stream={peerState.stream} 
+                stream={stream} 
               />
             </motion.div>
           )

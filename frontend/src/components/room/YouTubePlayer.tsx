@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react'
 import YouTube, { YouTubeEvent, YouTubePlayer as YTPlayer } from 'react-youtube'
-import { useRoomStore } from '../../store/roomStore'
 import { usePlaybackStore } from '../../store/playbackStore'
+import { PlaybackState } from '../../types'
 import { useSyncEngine } from '../../hooks/useSyncEngine'
 import { useSocket } from '../../hooks/useSocket'
 import { useClockSync } from '../../hooks/useClockSync'
@@ -16,10 +16,15 @@ export function YouTubePlayer({ videoId, isHost }: YouTubePlayerProps) {
   const { getServerTime } = useClockSync(socket)
   const { state: playback } = usePlaybackStore()
   
-  const [playerInfo, setPlayerInfo] = useState<YTPlayer | null>(null)
+  const [ytPlayer, setYtPlayer] = useState<YTPlayer | null>(null)
+  const [isPlayerReady, setIsPlayerReady] = useState(false)
+
+  // Keep a ref to the latest playback state so callbacks never use stale data
+  const playbackRef = useRef<PlaybackState | null>(playback)
+  useEffect(() => { playbackRef.current = playback }, [playback])
   
-  // D2 Sync Engine Hooks
-  const playerRef = useRef<{
+  // Player adapter for sync engine - stable reference
+  const playerAdapter = useRef<{
     getCurrentTime: () => number
     seekTo: (time: number, allowSeekAhead?: boolean) => void
     setPlaybackRate: (rate: number) => void
@@ -28,103 +33,117 @@ export function YouTubePlayer({ videoId, isHost }: YouTubePlayerProps) {
     isBuffering: () => boolean
   } | null>(null)
 
-  const [isBufferingLocal, setIsBufferingLocal] = useState(false)
-
-  const onReady = (event: YouTubeEvent) => {
-    setPlayerInfo(event.target)
-
-    playerRef.current = {
-      getCurrentTime:  () => event.target.getCurrentTime() || 0,
-      seekTo:          (time, allow) => event.target.seekTo(time, allow),
-      setPlaybackRate: (rate) => event.target.setPlaybackRate(rate),
-      getPlaybackRate: () => event.target.getPlaybackRate() || 1,
-      isPaused:        () => event.target.getPlayerState() === 2, // 2 = PAUSED
-      isBuffering:     () => event.target.getPlayerState() === 3, // 3 = BUFFERING
+  // ── YouTube ready handler ────────────────────────────────────
+  const onReady = useCallback((event: YouTubeEvent) => {
+    const player = event.target
+    setYtPlayer(player)
+    
+    // Create stable player adapter
+    playerAdapter.current = {
+      getCurrentTime:  () => player.getCurrentTime() || 0,
+      seekTo:          (time, allow = true) => player.seekTo(time, allow),
+      setPlaybackRate: (rate) => player.setPlaybackRate(rate),
+      getPlaybackRate: () => player.getPlaybackRate() || 1,
+      isPaused:        () => player.getPlayerState() === 2,
+      isBuffering:     () => player.getPlayerState() === 3,
     }
-  }
+    
+    setIsPlayerReady(true)
+    console.log('[YouTubePlayer] Ready, isHost:', isHost)
+    
+    // Use ref for initial sync so we always read the latest state,
+    // not the value captured when this callback was memoised.
+    const pb = playbackRef.current
+    if (pb && !isHost) {
+      const serverNow = getServerTime()
+      const expectedPos = pb.isPlaying && !pb.isBuffering
+        ? pb.baseVideoTime + ((serverNow - pb.baseServerTime) / 1000) * pb.rate
+        : pb.baseVideoTime
+      
+      console.log('[YouTubePlayer] Initial seek to:', expectedPos.toFixed(2), 's')
+      player.seekTo(Math.max(0, expectedPos), true)
+      
+      if (pb.isPlaying && !pb.isBuffering) {
+        player.playVideo()
+      } else {
+        player.pauseVideo()
+      }
+    }
+  }, [isHost, getServerTime])
 
-  // Hook up the sync engine D2
+  // Hook up the sync engine D2 - only when player is ready
   useSyncEngine({
-    player: playerRef.current,
+    player: isPlayerReady ? playerAdapter.current : null,
     playbackState: playback,
     isHost,
     getServerTime
   })
 
-  // Watch for server state changes to drive explicit play/pause events
+  // ── Non-host: react to server play/pause/seek commands ──────
   useEffect(() => {
-    if (!playerInfo || !playback) return
+    if (!ytPlayer || !playback || !isPlayerReady) return
+    if (isHost) return  // host drives the player directly
 
-    // This handles state that requires the player action such as Play/Pause directly from the host.
-    // The Sync Engine (D2) handles the drift / seek / rate.
-
-    const currentState = playerInfo.getPlayerState() // 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING
+    const currentState = ytPlayer.getPlayerState() // -1 unstarted, 1 PLAYING, 2 PAUSED, 3 BUFFERING, 5 cued
     
-    // Play / Pause sync
-    if (playback.isPlaying && !playback.isBuffering && currentState !== 1 && currentState !== 3) {
-      playerInfo.playVideo()
-    } else if (!playback.isPlaying && currentState === 1) {
-      playerInfo.pauseVideo()
+    if (playback.isPlaying && !playback.isBuffering) {
+      // Server says PLAY
+      if (currentState !== 1 && currentState !== 3) {
+        console.log('[YouTubePlayer] Server says PLAY, playing video')
+        ytPlayer.playVideo()
+      }
+    } else {
+      // Server says PAUSE (or buffering)
+      if (currentState === 1) {
+        console.log('[YouTubePlayer] Server says PAUSE, pausing video')
+        ytPlayer.pauseVideo()
+      }
     }
-  }, [playerInfo, playback?.isPlaying, playback?.isBuffering])
+  }, [ytPlayer, isPlayerReady, isHost, playback])
 
-  // Host events — if WE change state, broadcast it (D1)
-  const onPlay = () => {
-    if (isHost && playerInfo) {
-      setIsBufferingLocal(false)
-      emit('playback:play', { videoTime: playerInfo.getCurrentTime() })
-    }
-  }
-
-  const onPause = () => {
-    if (isHost && playerInfo) {
-      setIsBufferingLocal(false)
-      emit('playback:pause', { videoTime: playerInfo.getCurrentTime() })
-    }
-  }
-
-  const onBuffer = () => {
-    if (isHost) {
-      setIsBufferingLocal(true)
-      emit('playback:bufferStart')
-    }
-  }
-
-  // When host stops buffering, trigger buffer end (adds 3-2-1 countdown logic)
-  useEffect(() => {
-    if (isHost && !isBufferingLocal && playback?.isBuffering) {
-      // It means we were buffering locally but now we played (so buffering ended), 
-      // but actually YouTube fires `onPlay` after `onBuffer`.
-      // Let's hook into the exact transition. 
-      // Handled via onPlay checking if we were buffering.
-    }
-  }, [isHost, isBufferingLocal, playback?.isBuffering])
-  
-  const onStateChange = (event: YouTubeEvent) => {
+  // ── Host events: broadcast local player actions ─────────────
+  const onStateChange = useCallback((event: YouTubeEvent) => {
     if (!isHost) return
     const state = event.data
-    // 1 (playing)
+    const player = event.target
+    const pb = playbackRef.current
+    
+    // 1 = playing
     if (state === 1) {
-      if (playback?.isBuffering) {
-        // We just finished buffering
+      if (pb?.isBuffering) {
+        // Host just finished buffering → trigger countdown
+        console.log('[YouTubePlayer] Host buffer ended, triggering countdown')
         emit('playback:bufferEnd')
-        playerInfo?.pauseVideo() // Wait for countdown to resume us
+        player.pauseVideo() // Wait for countdown to resume
       } else {
-        onPlay()
+        const videoTime = player.getCurrentTime()
+        console.log('[YouTubePlayer] Host PLAY at:', videoTime.toFixed(2))
+        emit('playback:play', { videoTime })
       }
-    } 
-    // 2 (paused)
+    }
+    // 2 = paused
     else if (state === 2) {
-      onPause()
+      const videoTime = player.getCurrentTime()
+      console.log('[YouTubePlayer] Host PAUSE at:', videoTime.toFixed(2))
+      emit('playback:pause', { videoTime })
     }
-    // 3 (buffering)
+    // 3 = buffering
     else if (state === 3) {
-      onBuffer()
+      console.log('[YouTubePlayer] Host BUFFER START')
+      emit('playback:bufferStart')
     }
-  }
+  }, [isHost, emit])
 
   return (
-    <div style={{ position: 'absolute', inset: 0, background: 'black' }}>
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'black',
+        /* Ensure the YouTube iframe fills the container */
+        display: 'flex',
+      }}
+    >
       <YouTube
         videoId={videoId}
         opts={{
@@ -132,17 +151,34 @@ export function YouTubePlayer({ videoId, isHost }: YouTubePlayerProps) {
           height: '100%',
           playerVars: {
             autoplay: 1,
-            controls: isHost ? 1 : 0, // Only host gets native controls (to seek, etc)
-            disablekb: isHost ? 0 : 1, // Disable keyboard for non-hosts
+            controls: isHost ? 1 : 0,
+            disablekb: isHost ? 0 : 1,
             modestbranding: 1,
             rel: 0,
-            fs: 0
+            fs: 0,
+            playsinline: 1,    // Required for iOS Safari inline playback
+            origin: window.location.origin,
           }
         }}
         onReady={onReady}
         onStateChange={onStateChange}
-        style={{ width: '100%', height: '100%', pointerEvents: isHost ? 'auto' : 'none' }} // Non-hosts can't click to pause
+        onEnd={() => { if (isHost) emit('queue:next') }}
+        style={{
+          width: '100%',
+          height: '100%',
+          flex: 1,
+          pointerEvents: isHost ? 'auto' : 'none',
+        }}
+        iframeClassName="synchra-yt-iframe"
       />
+      {/* Inline style to force the iframe to fill its wrapper */}
+      <style>{`
+        .synchra-yt-iframe {
+          width: 100% !important;
+          height: 100% !important;
+          border: none;
+        }
+      `}</style>
     </div>
   )
 }

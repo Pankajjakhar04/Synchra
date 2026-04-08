@@ -49,9 +49,9 @@ steps:
       - '--timeout'
       - '300'
       - '--set-env-vars'
-      - 'NODE_ENV=production'
+      - 'NODE_ENV=production,FRONTEND_URL=https://synchra.vercel.app'
       - '--set-secrets'
-      - 'FIREBASE_SERVICE_ACCOUNT=firebase-admin-key:latest'
+      - 'FIREBASE_PROJECT_ID=firebase-project-id:latest,FIREBASE_CLIENT_EMAIL=firebase-client-email:latest,FIREBASE_PRIVATE_KEY=firebase-private-key:latest,JWT_SECRET=jwt-secret:latest,GCS_BUCKET_NAME=gcs-bucket-name:latest,REDIS_URL=redis-url:latest'
     id: 'deploy-backend'
     waitFor: ['push-backend']
 
