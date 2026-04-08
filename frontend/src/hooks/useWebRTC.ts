@@ -222,6 +222,25 @@ export function useWebRTC(
     [socket, localUserId]
   )
 
+  // ─── Destroy all peers on socket disconnect (they're stale) ───
+  useEffect(() => {
+    if (!socket) return
+
+    const handleDisconnect = () => {
+      console.log('[WebRTC] Socket disconnected — destroying all peers')
+      Object.entries(peersRef.current).forEach(([uid, peer]) => {
+        try { peer.destroy() } catch (_) { /* ignore */ }
+        delete peersRef.current[uid]
+      })
+      setPeers({})
+      pendingSignalsRef.current = {}
+      earlySignalQueue.current = []
+    }
+
+    socket.on('disconnect', handleDisconnect)
+    return () => { socket.off('disconnect', handleDisconnect) }
+  }, [socket])
+
   // ─── Handle incoming signals ─────────────────────────
   useEffect(() => {
     if (!socket) return
