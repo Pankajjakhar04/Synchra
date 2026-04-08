@@ -1,12 +1,14 @@
 {
-  "name": "synchra-frontend",
-  "version": "1.0.0",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build --workspace=frontend",
+  "devCommand": "npm run dev --workspace=frontend",
   "installCommand": "npm install",
   "framework": "vite",
-  "outputDirectory": "dist",
-  "regions": ["iad1"],
+  "outputDirectory": "frontend/dist",
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/index.html" }
+  ],
   "env": {
     "VITE_API_URL": "@synchra-api-url",
     "VITE_SOCKET_URL": "@synchra-socket-url",
