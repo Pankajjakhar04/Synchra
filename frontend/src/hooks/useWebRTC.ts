@@ -44,6 +44,9 @@ export function useWebRTC(
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [isMediaReady, setIsMediaReady] = useState(false)
   const pendingSignalsRef = useRef<Record<string, unknown[]>>({})
+  // Queue of signals that arrived before media was ready
+  const earlySignalQueue  = useRef<WebRTCSignal[]>([])
+  const isMediaReadyRef   = useRef(false)
 
   // ─── Start local camera/mic ─────────────────────────────
   const startMedia = useCallback(async () => {
@@ -70,6 +73,7 @@ export function useWebRTC(
       localStreamRef.current = stream
       setLocalStream(stream)
       setIsMediaReady(true)
+      isMediaReadyRef.current = true
       console.log('[WebRTC] Media ready:', stream.getTracks().map(t => t.kind).join(', '))
     } catch (err) {
       console.error('[WebRTC] getUserMedia failed:', err)
@@ -80,11 +84,13 @@ export function useWebRTC(
         localStreamRef.current = audioStream
         setLocalStream(audioStream)
         setIsMediaReady(true)
+        isMediaReadyRef.current = true
         console.log('[WebRTC] Audio-only ready')
       } catch (audioErr) {
         console.error('[WebRTC] Audio fallback failed:', audioErr)
-        // Continue without media
+        // Continue without media — still mark ready so peers can connect
         setIsMediaReady(true)
+        isMediaReadyRef.current = true
       }
     }
   }, [])
@@ -216,7 +222,7 @@ export function useWebRTC(
     [socket, localUserId]
   )
 
-  // ─── Handle incoming signals ─────────────────────────────
+  // ─── Handle incoming signals ─────────────────────────
   useEffect(() => {
     if (!socket) return
 
@@ -225,6 +231,14 @@ export function useWebRTC(
       
       // Don't process signals from self
       if (fromUserId === localUserId) return
+
+      // If media isn't ready yet, queue the signal and process later.
+      // Creating a peer before media is ready means it sends no video/audio.
+      if (!isMediaReadyRef.current) {
+        console.log(`[WebRTC] Media not ready — queuing signal from ${fromUserId}`)
+        earlySignalQueue.current.push(payload)
+        return
+      }
       
       console.log(`[WebRTC] Received signal from ${fromUserId}:`, 
         typeof signal === 'object' && signal !== null && 'type' in signal ? (signal as {type: string}).type : 'candidate')
@@ -257,12 +271,34 @@ export function useWebRTC(
     }
   }, [socket, localUserId, createPeer])
 
-  // ─── Initiate connections to new participants ───────────
+  // ─── When media becomes ready, process queued signals and initiate connections ───
   useEffect(() => {
-    // Wait for media to be ready before initiating connections
     if (!isMediaReady || !socket) return
     
-    // Connect to participants with higher userId (prevents duplicate connections)
+    // 1) Process any signals that arrived before media was ready
+    if (earlySignalQueue.current.length > 0) {
+      console.log(`[WebRTC] Processing ${earlySignalQueue.current.length} queued signals now that media is ready`)
+      const queued = [...earlySignalQueue.current]
+      earlySignalQueue.current = []
+      for (const payload of queued) {
+        const { fromUserId, signal } = payload
+        if (fromUserId === localUserId) continue
+        // Create peer and signal
+        ;(async () => {
+          let peer = peersRef.current[fromUserId]
+          if (!peer) {
+            peer = await createPeer(fromUserId, false)
+          }
+          if (peer) {
+            try { peer.signal(signal) } catch (e) {
+              console.error('[WebRTC] Error processing queued signal:', e)
+            }
+          }
+        })()
+      }
+    }
+    
+    // 2) Initiate connections to participants with higher userId (prevents duplicates)
     participantIds.forEach((uid) => {
       if (uid !== localUserId && !peersRef.current[uid] && uid > localUserId) {
         console.log(`[WebRTC] Initiating connection to ${uid} (we: ${localUserId})`)
